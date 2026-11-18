@@ -30,7 +30,10 @@
     { id: 'flash', kind: 'practice', name: 'بطاقات تعليمية', desc: 'وجه وظهر مع صوت، والطالب يقول: عرفتها أو لم أعرفها.', needs: 'pairs' },
     { id: 'tf', kind: 'practice', name: 'صح أو خطأ', desc: 'هل هذا الجواب صحيح؟ يحكم الطالب على كل زوج.', needs: 'pairs' },
     { id: 'spell', kind: 'practice', name: 'رتّب الحروف', desc: 'يكوّن الطالب الجواب من حروفه.', needs: 'pairs' },
+    { id: 'order', kind: 'practice', name: 'رتّب الجملة', desc: 'يرتّب الطالب كلمات الجملة بالترتيب الصحيح.', needs: 'sentences' },
     { id: 'type', kind: 'practice', name: 'اكتب الجواب', desc: 'يكتب الطالب الجواب بنفسه.', needs: 'pairs' },
+    { id: 'snake', kind: 'play', name: 'الأفعى', desc: 'السؤال في الأعلى، والأفعى تأكل الجواب الصحيح وتكبر.', needs: 'pairs' },
+    { id: 'cross', kind: 'play', name: 'كلمات متقاطعة', desc: 'لكل كلمة صورة أو تلميح، والطالب يملأ الشبكة.', needs: 'pairs' },
     { id: 'bus', kind: 'play', name: 'باص الكلمات', desc: 'أخرج الحافلة التي عليها الجواب.', needs: 'pairs', game: 'bus.html' },
     { id: 'kicks', kind: 'play', name: 'ركلات الكلمات', desc: 'سدّد نحو الجواب الصحيح من أربعة.', needs: 'pairs', game: 'kicks.html' },
     { id: 'race', kind: 'play', name: 'سباق الكلمات', desc: 'قُد المركبة عبر بوابة الجواب.', needs: 'pairs', game: 'race.html' },
@@ -40,8 +43,8 @@
   const RECIPES = [
     { id: 'vocab', name: 'مفردات', list: ['flash', 'match', 'kicks', 'quiz'] },
     { id: 'reading', name: 'قراءة وفهم', list: ['flash', 'tf', 'mcq', 'quiz'] },
-    { id: 'review', name: 'مراجعة قبل الامتحان', list: ['bus', 'mcq', 'quiz'] },
-    { id: 'empty', name: 'فارغة', list: [] }
+    { id: 'sentences', name: 'جمل', list: ['flash', 'order', 'match', 'quiz'] },
+    { id: 'review', name: 'مراجعة قبل الامتحان', list: ['bus', 'mcq', 'quiz'] }
   ];
   const DEFAULT_SETTINGS = { mode: 'practice', showScore: true, leaderboard: true, lbCount: 10, showAnswers: true, shuffle: true, readAloud: true, attempts: 0, timeLimit: 0, due: '', swap: false };
   const settingsFor = (t, s) => { const o = Object.assign({}, DEFAULT_SETTINGS, s || {}); if (tpl(t).test) { o.mode = 'test'; } if (o.mode === 'test') o.leaderboard = false; return o; };
@@ -73,11 +76,31 @@
       const qm = qRe.exec(l); cur = { q: (qm ? qm[1] : l).trim(), opts: [] }; out.push(cur);
     }
     return out.filter(x => x.opts.length >= 2).map(x => { const ri = Math.max(0, x.opts.findIndex(o => o.star)); const right = x.opts[ri]; const wrong = x.opts.filter((_, k) => k !== ri).map(o => o.t);
-      return { id: uid(), q: x.q, qi: '', a: right.t, ai: '', w: [wrong[0] || '', wrong[1] || '', wrong[2] || ''] }; });
+      return { id: uid(), q: x.q, qi: '', a: right.t, ai: '', w: [wrong[0] || '', wrong[1] || '', wrong[2] || ''], p: Math.min(ri, 3), marked: x.opts.some(o => o.star) }; });
   }
   // paste a list: "word - meaning" per line (tab, -, =, : or ،)
+  // one line = one item. A separator (Tab, " - ", "=", " : ") splits front and back; a line without one stays whole (a word or a sentence).
+  const SEP = /\t+|\s+[-–—]\s+|\s*=\s*|\s+:\s+|\s*\|\s*/;
   function parseList(text) {
-    return String(text).split(/\r?\n/).map(l => l.trim()).filter(Boolean).map(l => { const m = l.split(/\t|\s+[-–—=:]\s+|\s*=\s*|\s*:\s*|\s*[،,]\s*/); return newItem((m[0] || '').trim(), m.slice(1).join(' ').trim()); });
+    return String(text).split(/\r?\n/).map(l => l.trim().replace(/^(?:\d+|[٠-٩]+)\s*[\).]\s+/, '').replace(/^[•\-–*]\s+/, '')).filter(Boolean).map(l => { const m = l.split(SEP); return newItem((m[0] || '').trim(), m.slice(1).join(' ').trim()); });
+  }
+  // detect what was pasted: an exam (numbered questions with a) b) c) options), pairs, or single lines
+  function parseAny(text) {
+    const ex = parseExam(text);
+    if (ex.length && ex.some(i => (i.w || []).some(Boolean))) { const marked = ex.filter(i => i.marked).length; ex.forEach(i => delete i.marked); return { kind: 'questions', items: ex, marked }; }
+    const items = parseList(text), paired = items.filter(i => i.a).length;
+    const sentences = items.filter(i => words(i.q) >= 3).length;
+    return { kind: paired >= Math.ceil(items.length / 2) ? 'pairs' : 'single', items, paired, sentences };
+  }
+  const words = s => String(s || '').trim().split(/\s+/).filter(Boolean).length;
+  // the sentence an item offers for "order the sentence": its front, or its back, if it has 3–14 words
+  const sentenceOf = it => [it.q, it.a].find(x => words(x) >= 3 && words(x) <= 14) || '';
+  // how many items a template can actually use
+  function fits(tid, items) {
+    const t = tpl(tid);
+    if (t.needs === 'sentences') return usable(items).filter(i => sentenceOf(i)).length;
+    if (t.print) return usable(items).length;
+    return answered(items).length;
   }
 
   // ---------- links (share) ----------
@@ -144,5 +167,5 @@
       g.gain.setValueAtTime(.15, t0); g.gain.exponentialRampToValueAtTime(.001, t0 + .2); o.connect(g); g.connect(AC.destination); o.start(t0); o.stop(t0 + .22); }); } catch (e) {} }
 
   window.K = { ls, uid, code, esc, shuffle, scriptOf, dirOf, norm, KINDS, TEMPLATES, tpl, RECIPES, DEFAULT_SETTINGS, settingsFor, newItem, usable, answered, oriented, options,
-    parseExam, parseList, pack, unpack, DB, cloneActivity, cloneUnit, cloneItems, board, speak, tone };
+    parseExam, parseList, parseAny, words, sentenceOf, fits, pack, unpack, DB, cloneActivity, cloneUnit, cloneItems, board, speak, tone };
 })();

@@ -111,3 +111,13 @@ button.card.on{border:2px solid var(--brand);box-shadow:0 6px 18px rgba(76,61,21
 .sheet{background:var(--surface);border-radius:16px;width:min(620px,100%);max-height:88vh;overflow:auto;padding:20px;display:flex;flex-direction:column;gap:14px;box-shadow:0 20px 60px rgba(0,0,0,.25);animation:pop .22s var(--ease)}
 @keyframes pop{from{opacity:0;transform:scale(.97)}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+/* ===== template previews: a strip of 4 real screenshots; frame 1 is the still, hovering plays them ===== */
+.card .art.shot{display:block;height:168px;padding:0;background-color:var(--ground);background-repeat:no-repeat;background-size:400% 100%;background-position:0 0;border-bottom:1px solid var(--line)}
+@keyframes shotPlay{from{background-position:0 0}to{background-position:133.333% 0}}
+.card:hover .art.shot,.card:focus-visible .art.shot,.card.on .art.shot{animation:shotPlay 4s steps(4,end) infinite}
+@media (prefers-reduced-motion:reduce){.card .art.shot{animation:none!important}}
+
+/* wrong-answer marker: click it to make this answer the right one */
+.mkr{width:26px;height:26px;border-radius:50%;border:2px solid #C9CDD8;background:#fff;color:#C9CDD8;display:grid;place-items:center;flex:none;padding:0;transition:border-color .15s,color .15s,background-color .15s}
+.mkr:hover,.mkr:focus-visible{border-color:var(--ok);color:#fff;background:var(--ok)}

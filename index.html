@@ -34,11 +34,11 @@ const SVG = {
 const ic = (n, s = 18, w = 1.8) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${SVG[n]}</svg>`;
 const chip = k => `<span class="chip" style="background:${KINDS[k].soft};color:${KINDS[k].ink}">${KINDS[k].name}</span>`;
 const thumb = k => `<span class="thumb" style="background:${KINDS[k].soft};color:${KINDS[k].ink}"><i></i><i></i><i></i><i></i></span>`;
-const toast = m => { const d = document.createElement('div'); d.className = 'toast'; d.textContent = m; document.body.appendChild(d); setTimeout(() => d.remove(), 2600); };
+const toast = m => { document.querySelectorAll('.toast').forEach(x => x.remove()); const d = document.createElement('div'); d.className = 'toast'; d.textContent = m; document.body.appendChild(d); setTimeout(() => d.remove(), m.length > 50 ? 5000 : 2600); };
 const when = t => { const d = new Date(t), n = new Date(); return d.toDateString() === n.toDateString() ? 'اليوم' : d.toLocaleDateString('ar', { day: 'numeric', month: 'long' }); };
 
 // ================= state =================
-const S = { view: 'my', filter: 'all', q: '', draft: null, unit: null, pick: 'mcq', tplFor: 'activity', tplFilter: 'all', way: 'link', lastLink: null, libTab: 'act', libQ: '', resCode: null, editing: null };
+const S = { view: 'my', filter: 'all', q: '', draft: null, unit: null, pick: 'mcq', tplFor: 'activity', tplFilter: 'all', way: 'link', lastLink: null, libTab: 'act', libQ: '', resCode: null, editing: null, ustep: 1 };
 
 // ================= top bar =================
 function barHTML() {
@@ -48,6 +48,12 @@ function barHTML() {
     const li = (n, t) => `<li class="${n === st ? 'on' : n < st ? 'done' : ''}"><b>${n < st ? ic('check', 12, 3) : n}</b>${t}</li>`;
     return `<button class="logo" data-a="go" data-v="my"><i>K</i>Kalima</button><ol class="steps" aria-label="خطوات النشاط">${li(1, 'القالب')}${li(2, 'المحتوى')}${li(3, 'الاستعمال')}</ol>
       <button class="btn sm" data-a="go" data-v="my">${S.view === 'use' ? 'تم' : 'إلغاء'}</button>`;
+  }
+  if (S.view === 'unit') {
+    const st = S.ustep, done = unitDone();
+    const li = (n, t) => `<li class="${n === st ? 'on' : n < st || done[n] ? 'done' : ''}"><button data-a="ustep" data-v="${n}" style="all:unset;cursor:pointer;display:flex;align-items:center;gap:8px"><b>${n !== st && done[n] ? ic('check', 12, 3) : n}</b>${t}</button></li>`;
+    return `<button class="logo" data-a="go" data-v="my"><i>K</i>Kalima</button><ol class="steps" aria-label="خطوات الوحدة">${li(1, 'الوحدة')}${li(2, 'المحتوى')}${li(3, 'الأنشطة')}${li(4, 'المشاركة')}</ol>
+      <button class="btn sm" data-a="go" data-v="my">${st === 4 ? 'تم' : 'حفظ وخروج'}</button>`;
   }
   const nav = [['my', 'أنشطتي'], ['library', 'المكتبة'], ['results', 'النتائج']];
   return `<button class="logo" data-a="go" data-v="my"><i>K</i>Kalima</button>
@@ -106,6 +112,9 @@ function viewCreate() {
   </div>`;
 }
 
+// ================= template previews: real screenshots of each template, 4 frames that play on hover =================
+const tplArt = id => `<span class="art shot" style="background-image:url(tpl/${id}.jpg)" role="img" aria-label="معاينة القالب"></span>`;
+
 // ================= 3. templates =================
 function viewTpl() {
   const tabs = [['all', 'الكل'], ['practice', 'تمارين'], ['test', 'اختبار'], ['play', 'ألعاب'], ['print', 'طباعة']];
@@ -115,7 +124,7 @@ function viewTpl() {
     <div class="row" style="align-items:flex-end"><div class="grow" style="min-width:260px"><h1>${forUnit ? 'أضف نشاطاً إلى الوحدة' : 'اختر القالب'}</h1><p class="muted" style="margin:4px 0 0">تستطيع تغيير القالب لاحقاً بدون إعادة إدخال المحتوى.</p></div>
       <div class="pills" role="tablist">${tabs.map(([k, l]) => `<button class="pill ${S.tplFilter === k ? 'on' : ''}" data-a="tplFilter" data-v="${k}">${l}</button>`).join('')}</div></div>
     <div class="grid">${list.map(t => `<button class="card ${S.pick === t.id ? 'on' : ''}" data-a="pickTpl" data-v="${t.id}" aria-pressed="${S.pick === t.id}">
-      <span class="art" style="background:${KINDS[t.kind].soft};color:${KINDS[t.kind].ink}"><i></i><i></i><i></i></span>
+${tplArt(t.id)}
       <span class="body"><span class="row" style="gap:8px"><b class="grow" style="font-weight:600;font-size:16px">${t.name}</b>${chip(t.kind)}</span>
       <span class="small muted" style="min-height:40px">${t.desc}</span><span class="small muted">يحتاج: <b style="color:var(--ink);font-weight:600">${t.needs === 'questions' ? 'أسئلة وأجوبة' : 'أزواج: كلمة ومعنى، أو سؤال وجواب'}</b></span></span></button>`).join('')}</div>
   </div>`;
@@ -126,6 +135,17 @@ function footTpl() {
 }
 
 // ================= item editor (activities and units share it) =================
+// four answer slots that stay where the teacher put them; the green one is the right answer, a click on any circle moves the green there
+const slotsOf = it => { const S = (it.w || ['', '', '']).slice(0, 3); while (S.length < 3) S.push(''); const p = Math.min(Math.max(+it.p || 0, 0), 3); S.splice(p, 0, it.a || ''); return { S, p }; };
+function ansSlots(it, owner) {
+  const { S, p } = slotsOf(it);
+  return S.map((t, j) => j === p ? `<div class="row" style="flex-wrap:nowrap;gap:6px;padding:4px;border-radius:10px;background:var(--ok-soft);border:2px solid #0F8A5F">
+      <span title="الجواب الصحيح" style="width:26px;height:26px;border-radius:50%;background:var(--ok);color:#fff;display:grid;place-items:center;flex:none">${ic('check', 14, 3)}</span>
+      <input class="in" dir="auto" data-a="itxt" data-o="${owner}" data-id="${it.id}" data-f="a" value="${esc(t)}" placeholder="الجواب الصحيح" style="border:0;background:transparent;min-height:36px">${imgBtn(it, 'ai', owner, true)}</div>`
+    : `<div class="row" style="flex-wrap:nowrap;gap:6px;padding:4px;border-radius:10px;border:2px solid var(--line)">
+      <button class="mkr" data-a="mkRight" data-o="${owner}" data-id="${it.id}" data-k="${j}" title="هذا هو الجواب الصحيح" aria-label="هذا هو الجواب الصحيح">${ic('check', 13, 3)}</button>
+      <input class="in" dir="auto" data-a="iw" data-o="${owner}" data-id="${it.id}" data-k="${j < p ? j : j - 1}" value="${esc(t)}" placeholder="جواب خاطئ (اختياري)" style="border:0;background:transparent;min-height:36px"></div>`).join('');
+}
 function itemsEditor(items, needs, owner) {
   const q = needs === 'questions';
   return `<div style="display:flex;flex-direction:column;gap:10px">${items.map((it, i) => `<article class="panel" style="padding:14px;display:flex;flex-direction:column;gap:10px">
@@ -133,25 +153,45 @@ function itemsEditor(items, needs, owner) {
       <input class="in" dir="auto" data-a="itxt" data-o="${owner}" data-id="${it.id}" data-f="q" value="${esc(it.q)}" placeholder="${q ? 'السؤال' : 'الكلمة أو السؤال'}" style="font-size:17px;font-weight:500">
       ${imgBtn(it, 'qi', owner)}<button class="ico" data-a="idel" data-o="${owner}" data-id="${it.id}" aria-label="حذف">${ic('trash', 16)}</button></div>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px;padding-inline-start:30px">
-      <div class="row" style="flex-wrap:nowrap;gap:6px;padding:4px;border-radius:10px;background:var(--ok-soft);border:1px solid #9FD9BF">
-        <span title="الجواب الصحيح" style="width:26px;height:26px;border-radius:50%;background:var(--ok);color:#fff;display:grid;place-items:center;flex:none">${ic('check', 14, 3)}</span>
-        <input class="in" dir="auto" data-a="itxt" data-o="${owner}" data-id="${it.id}" data-f="a" value="${esc(it.a)}" placeholder="${q ? 'الجواب الصحيح' : 'المعنى أو الجواب'}" style="border:0;background:transparent;min-height:36px">${imgBtn(it, 'ai', owner, true)}</div>
-      ${q ? [0, 1, 2].map(k => `<div class="row" style="flex-wrap:nowrap;gap:6px;padding:4px;border-radius:10px;border:1px solid var(--line)">
-        <span style="width:26px;height:26px;border-radius:50%;background:var(--line);color:var(--muted);display:grid;place-items:center;flex:none">${ic('x', 13, 3)}</span>
-        <input class="in" dir="auto" data-a="iw" data-o="${owner}" data-id="${it.id}" data-k="${k}" value="${esc(it.w[k] || '')}" placeholder="جواب خاطئ (اختياري)" style="border:0;background:transparent;min-height:36px"></div>`).join('') : ''}
+      ${q ? ansSlots(it, owner) : `<div class="row" style="flex-wrap:nowrap;gap:6px;padding:4px;border-radius:10px;background:var(--ok-soft);border:1px solid #9FD9BF">
+        <span title="الجواب" style="width:26px;height:26px;border-radius:50%;background:var(--ok);color:#fff;display:grid;place-items:center;flex:none">${ic('check', 14, 3)}</span>
+        <input class="in" dir="auto" data-a="itxt" data-o="${owner}" data-id="${it.id}" data-f="a" value="${esc(it.a)}" placeholder="المعنى أو الجواب" style="border:0;background:transparent;min-height:36px">${imgBtn(it, 'ai', owner, true)}</div>`}
     </div></article>`).join('')}
     <button class="btn" data-a="iadd" data-o="${owner}" style="border-style:dashed;border-color:#A99FEF;color:var(--brand);min-height:52px">${ic('plus', 18, 2)}${q ? 'سؤال جديد' : 'عنصر جديد'}</button>
-    ${q ? '<p class="small muted" style="margin:0">اكتب الجواب الصحيح في الخانة الخضراء. الأجوبة تُخلط للطالب تلقائياً. إذا تركت الأجوبة الخاطئة فارغة، يأخذها Kalima من أجوبة الأسئلة الأخرى.</p>' : ''}</div>`;
+    ${q ? '<p class="small muted" style="margin:0">الجواب الصحيح في الخانة الخضراء. لتغييره اضغط الدائرة بجانب أي جواب آخر. الأجوبة تُخلط للطالب تلقائياً. إذا تركت الأجوبة الخاطئة فارغة، يأخذها Kalima من أجوبة الأسئلة الأخرى.</p>' : ''}</div>`;
 }
 function imgBtn(it, f, owner, flat) {
   return `<button class="ico" data-a="pic" data-o="${owner}" data-id="${it.id}" data-f="${f}" aria-label="صورة" style="${flat ? 'border:0;background:transparent;' : ''}${it[f] ? 'width:44px;height:38px;padding:2px' : ''}">${it[f] ? `<span class="frame" style="width:100%;height:100%"><img src="${esc(it[f])}" alt=""></span>` : ic('img', 18)}</button>`;
 }
 function quickAdd(owner, needs) {
   return `<section class="panel" style="display:flex;flex-direction:column;gap:6px"><h2 style="font-size:16px;margin-bottom:4px">أضف بسرعة</h2>
-    ${needs === 'questions' ? `<button class="btn ghost" data-a="pasteExam" data-o="${owner}" style="justify-content:flex-start;flex-direction:column;align-items:flex-start;gap:0;padding:10px"><b>الصق امتحاناً من Word</b><span class="small muted" style="font-weight:400">الأسئلة والأجوبة أ ب ج د تُفصل تلقائياً</span></button>` : ''}
-    <button class="btn ghost" data-a="pasteList" data-o="${owner}" style="justify-content:flex-start;flex-direction:column;align-items:flex-start;gap:0;padding:10px"><b>الصق قائمة</b><span class="small muted" style="font-weight:400">سطر لكل عنصر: cat - قطة</span></button>
+    <button class="btn ghost" data-a="pasteList" data-o="${owner}" style="justify-content:flex-start;flex-direction:column;align-items:flex-start;gap:0;padding:10px"><b>الصق دفعة واحدة</b><span class="small muted" style="font-weight:400">كلمات، أو جمل، أو امتحان من Word</span></button>
     <button class="btn ghost" disabled style="justify-content:flex-start;flex-direction:column;align-items:flex-start;gap:0;padding:10px"><b>من نص إلى أسئلة <span class="chip" style="background:var(--ink);color:#fff">PRO</span></b><span class="small muted" style="font-weight:400">الذكاء الاصطناعي يقترح أسئلة لتراجعها · قريباً</span></button>
   </section>`;
+}
+
+// ================= paste box: words, sentences or an exam, all at once =================
+const PASTE_EX = 'cat - قطة&#10;dog - كلب&#10;The cat is on the mat.&#10;&#10;أو امتحان:&#10;1. Which animal can fly?&#10;a) *bird&#10;b) fish&#10;c) cow&#10;d) dog';
+function pasteBox(owner, big) {
+  return `<section class="panel" style="display:flex;flex-direction:column;gap:12px;${big ? 'padding:24px;border:2px solid var(--brand-line)' : ''}">
+    <div><h2 style="${big ? 'font-size:22px' : 'font-size:17px'}">الصق كل المحتوى مرة واحدة</h2>
+    <p class="muted" style="margin:6px 0 0">كل عنصر في سطر. كلمة ومعناها: <b dir="ltr">cat - قطة</b> · جملة كاملة في سطر · أو امتحان من Word بالأجوبة أ) ب) ج) د) وضع * قبل الجواب الصحيح.</p></div>
+    <textarea class="in" id="pasteInl" data-o="${owner}" dir="auto" style="min-height:${big ? 220 : 160}px;font-size:16px" placeholder="${PASTE_EX}"></textarea>
+    <div class="row"><span id="pasteHint" class="small muted grow">الصق أو اكتب، وKalima يفهم النوع تلقائياً.</span><button class="btn pri lg" data-a="pasteInl" data-o="${owner}">أضف المحتوى</button></div></section>`;
+}
+function describePaste(txt) {
+  if (!txt.trim()) return 'الصق أو اكتب، وKalima يفهم النوع تلقائياً.';
+  const r = K.parseAny(txt);
+  if (r.kind === 'questions') return `✓ وجدت ${r.items.length} سؤال اختيار من متعدد.` + (r.marked < r.items.length ? ` ${r.items.length - r.marked} بدون جواب صحيح محدد: تختاره بعد الإضافة، أو ضع * قبل الجواب الصحيح.` : '');
+  const pairs = r.items.filter(i => i.a).length, rest = r.items.filter(i => !i.a), sent = rest.filter(i => K.words(i.q) >= 3).length, single = rest.length - sent;
+  const parts = [pairs && `${pairs} مع معنى`, sent && `${sent} جملة`, single && `${single} كلمة بدون معنى`].filter(Boolean);
+  return '✓ وجدت: ' + parts.join('، ') + (single ? '. أضف المعنى أو صورة بعد الإضافة.' : '.');
+}
+function applyPaste(o, txt) {
+  const r = K.parseAny(txt); if (!r.items.length) { toast('لم أجد شيئاً لإضافته'); return false; }
+  const items = ownerItems(o), keep = items.filter(x => (x.q || '').trim() || x.qi); items.length = 0; items.push(...keep, ...r.items);
+  if (o === 'unit' && r.kind === 'questions') S.unit.content = 'questions';
+  touch(o); toast(r.kind === 'questions' && r.marked < r.items.length ? 'أضيف ' + r.items.length + ' سؤال. اختر الجواب الصحيح لكل سؤال بالضغط على الدائرة بجانبه.' : 'أضيف ' + r.items.length); return true;
 }
 
 // ================= 4. activity editor =================
@@ -160,7 +200,8 @@ function viewEdit() {
   const same = TEMPLATES.filter(x => x.id !== a.template && x.needs === t.needs || (t.needs === 'questions' && x.needs === 'pairs' && !x.print)).slice(0, 5);
   return `<div class="page"><div class="split"><div class="main">
       <label class="field"><span>عنوان النشاط</span><input class="in" id="aTitle" dir="auto" value="${esc(a.title)}" placeholder="مثال: Animals – Quiz" style="font-size:22px;font-weight:600"></label>
-      ${itemsEditor(a.items, t.needs, 'act')}
+      ${K.usable(a.items).length ? '' : pasteBox('act', true) + '<div class="row" style="gap:10px"><span class="grow" style="height:1px;background:var(--line)"></span><span class="small muted">أو اكتب بنفسك</span><span class="grow" style="height:1px;background:var(--line)"></span></div>'}
+      ${itemsEditor(a.items, t.needs === 'questions' ? 'questions' : 'pairs', 'act')}
     </div><aside class="side">
       <section class="panel" style="display:flex;flex-direction:column;gap:10px"><div class="row"><h2 class="grow" style="font-size:16px">القالب</h2><button class="btn sm ghost" data-a="changeTpl" style="color:var(--brand)">كل القوالب</button></div>
         <div class="row" style="padding:10px;border-radius:10px;background:var(--brand-soft)">${thumb(t.kind)}<b>${t.name}</b></div>
@@ -215,49 +256,78 @@ function linkBox(url) {
     <button class="btn pri" data-a="copyLink">${ic('copy', 16)}نسخ</button></div><div class="row"><button class="btn sm" data-a="openLink">افتح كطالب</button><button class="btn sm" data-a="newLink">رابط جديد بإعدادات أخرى</button></div></div>`;
 }
 
-// ================= 6. unit builder =================
+// ================= 6. unit builder: four steps, one per screen =================
+const uNeeds = u => u.content === 'questions' ? 'questions' : 'pairs';
+function unitDone() {
+  const u = S.unit; if (!u) return {};
+  return { 1: !!(u.title || '').trim(), 2: K.usable(u.items).length > 0, 3: u.acts.length > 0, 4: false };
+}
 function viewUnit() {
-  const u = S.unit, needs = u.acts.some(x => tpl(x.template).needs === 'questions') ? 'questions' : 'pairs';
-  const doors = { practice: 0, test: 0, play: 0 }; u.acts.forEach(x => { const k = tpl(x.template).kind; if (doors[k] != null) doors[k]++; });
-  return `<div class="page"><div class="split"><div class="main">
-      <div class="row" style="align-items:flex-end"><label class="field grow" style="min-width:260px"><span>اسم الوحدة</span><input class="in" id="uTitle" dir="auto" value="${esc(u.title)}" placeholder="مثال: الوحدة 3 – Animals" style="font-size:22px;font-weight:600"></label>
-        <label class="field"><span>المادة</span><select class="in" id="uSubject">${['إنجليزي', 'عربي', 'عبري', 'رياضيات', 'علوم', 'أخرى'].map(s => `<option ${u.subject === s ? 'selected' : ''}>${s}</option>`).join('')}</select></label>
-        <label class="field"><span>الصف</span><select class="in" id="uGrade">${['', 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(g => `<option value="${g}" ${String(u.grade) === String(g) ? 'selected' : ''}>${g ? 'الصف ' + g : '—'}</option>`).join('')}</select></label></div>
-      <section style="display:flex;flex-direction:column;gap:12px">
-        <div class="row"><h2 class="grow">أنشطة الوحدة <span class="muted" style="font-weight:500;font-size:15px">· ${u.acts.length}</span></h2>
-          ${u.acts.length ? '' : `<span class="small muted">ابدأ من وصفة:</span><div class="pills">${RECIPES.filter(r => r.list.length).map(r => `<button class="pill small" data-a="recipe" data-v="${r.id}">${r.name}</button>`).join('')}</div>`}</div>
-        ${u.acts.length ? `<ol class="panel flush list" style="margin:0;padding:0;list-style:none">${u.acts.map((x, i) => { const t = tpl(x.template); return `<li class="li">
-          <div style="display:flex;flex-direction:column"><button class="ico" style="width:30px;height:24px;border:0" data-a="umove" data-id="${x.id}" data-v="-1" aria-label="لأعلى" ${i ? '' : 'disabled'}>${ic('up', 16)}</button><button class="ico" style="width:30px;height:24px;border:0" data-a="umove" data-id="${x.id}" data-v="1" aria-label="لأسفل" ${i < u.acts.length - 1 ? '' : 'disabled'}>${ic('down', 16)}</button></div>
-          <span style="width:28px;height:28px;border-radius:50%;background:var(--ground);display:grid;place-items:center;font-weight:700;font-size:14px">${i + 1}</span>${thumb(t.kind)}
-          <div class="grow" style="min-width:160px"><b style="font-weight:600">${t.name}</b><div class="small muted">${t.desc}</div></div>${chip(t.kind)}
-          <select class="in" data-a="uswap" data-id="${x.id}" aria-label="غيّر القالب" style="width:170px;min-height:36px">${TEMPLATES.filter(o => !o.print).map(o => `<option value="${o.id}" ${o.id === x.template ? 'selected' : ''}>${o.name}</option>`).join('')}</select>
-          <button class="ico" data-a="udel" data-id="${x.id}" aria-label="حذف النشاط">${ic('trash', 16)}</button></li>`; }).join('')}</ol>` : `<div class="panel empty" style="padding:28px"><span>اختر وصفة جاهزة من الأعلى، أو أضف الأنشطة بنفسك.</span></div>`}
-        <button class="btn" data-a="uadd" style="border-style:dashed;border-color:#A99FEF;color:var(--brand);min-height:52px">${ic('plus', 18, 2)}أضف نشاطاً</button>
-      </section>
-      <section style="display:flex;flex-direction:column;gap:10px"><h2>المحتوى المشترك</h2><p class="small muted" style="margin:0">كل أنشطة هذه الوحدة تستعمل هذا المحتوى، وتعديله لا يغيّر أي وحدة أخرى.</p>
-        ${itemsEditor(u.items, needs, 'unit')}</section>
-    </div><aside class="side">
-      <section class="panel" style="display:flex;flex-direction:column;gap:12px"><h2 style="font-size:16px">ما يراه الطالب</h2>
-        <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;text-align:center;font-size:13px;font-weight:600">
-          ${['practice', 'test', 'play'].map(k => `<span style="padding:12px 4px;border-radius:10px;background:${KINDS[k].soft};color:${KINDS[k].ink}">${KINDS[k].door}<br><span style="font-weight:400">${doors[k]}</span></span>`).join('')}</div>
-        <label class="check small"><input type="checkbox" id="uOrder" ${u.order !== false ? 'checked' : ''}> اقترح هذا الترتيب على الطالب</label>
-        <label class="check small"><input type="checkbox" id="uTestLast" ${u.testLast ? 'checked' : ''}> افتح الاختبار بعد إنهاء التمارين فقط</label></section>
-      ${quickAdd('unit', needs)}
-      <section class="panel" style="display:flex;flex-direction:column;gap:8px"><h2 style="font-size:16px">للطباعة من نفس المحتوى</h2><button class="btn" data-a="unitPrint">${ic('print', 16)}بطاقات وأوراق عمل</button></section>
-    </aside></div></div>`;
+  const st = S.ustep;
+  return `<div class="page narrow">${st === 1 ? uStep1() : st === 2 ? uStep2() : st === 3 ? uStep3() : uStep4()}</div>`;
 }
-function footUnit() {
-  return `<div class="footbar"><button class="btn" data-a="go" data-v="my">رجوع</button><span class="muted">${S.unit.acts.length} أنشطة · ${K.usable(S.unit.items).length} عنصر · محفوظ تلقائياً</span><span class="grow"></span>
-    <button class="btn" data-a="tryUnit">${ic('play', 16)}جرّب كطالب</button><button class="btn pri lg" data-a="shareUnit" data-id="${S.unit.id}">${ic('link', 18)}شارك الوحدة</button></div>`;
-}
-function viewUnitShare() {
+const uHead = (t, sub) => `<div><h1>${t}</h1>${sub ? `<p class="muted" style="margin:6px 0 0;font-size:16px">${sub}</p>` : ''}</div>`;
+function uStep1() {
   const u = S.unit;
-  return `<div class="page narrow"><div class="row"><div class="grow"><h1>${esc(u.title || 'وحدة بدون عنوان')}</h1><span class="muted">${u.acts.length} أنشطة · ${K.usable(u.items).length} عنصر</span></div><button class="btn" data-a="openUnit" data-id="${u.id}">تعديل الوحدة</button></div>
-    <section class="panel split" style="gap:28px"><div class="main" style="flex-basis:380px"><p class="muted" style="margin:0">كل نشاط في الوحدة يأخذ إعدادات قالبه: الاختبار بمحاولة واحدة ولوح المتصدرين مخفي، والتمارين والألعاب يظهر فيها لوح المتصدرين.</p>
+  return `${uHead('وحدة جديدة', 'اسم الوحدة والمادة والصف. تستطيع تغييرها لاحقاً.')}
+    <section class="panel" style="display:flex;flex-direction:column;gap:18px;padding:24px">
+      <label class="field"><span>اسم الوحدة</span><input class="in" id="uTitle" dir="auto" value="${esc(u.title)}" placeholder="مثال: الوحدة 3 – Animals" style="font-size:22px;font-weight:600;min-height:54px"></label>
+      <div class="row" style="gap:16px">
+        <label class="field"><span>المادة</span><select class="in" id="uSubject" style="width:200px">${['إنجليزي', 'عربي', 'عبري', 'رياضيات', 'علوم', 'أخرى'].map(x => `<option ${u.subject === x ? 'selected' : ''}>${x}</option>`).join('')}</select></label>
+        <label class="field"><span>الصف</span><select class="in" id="uGrade" style="width:160px">${['', 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(g => `<option value="${g}" ${String(u.grade) === String(g) ? 'selected' : ''}>${g ? 'الصف ' + g : '—'}</option>`).join('')}</select></label></div>
+    </section>`;
+}
+function uStep2() {
+  const u = S.unit, n = K.usable(u.items).length, q = uNeeds(u) === 'questions';
+  const noAns = K.usable(u.items).length - K.answered(u.items).length;
+  return `${uHead('المحتوى', 'الكلمات أو الجمل أو الأسئلة التي ستعمل عليها كل أنشطة الوحدة.')}
+    ${n ? `<div class="row"><span class="chip" style="background:var(--ok-soft);color:var(--ok-ink);font-size:14px;padding:5px 12px">${n} ${q ? 'سؤال' : 'عنصر'}</span>
+        ${noAns ? `<span class="small muted">${noAns} بدون معنى أو جواب: تعمل فقط في «رتّب الجملة» إن كانت جملاً.</span>` : ''}<span class="grow"></span>
+        <button class="btn" data-a="pasteList" data-o="unit">${ic('plus', 16, 2)}الصق المزيد</button></div>
+      <label class="check small"><input type="checkbox" id="uQ" ${q ? 'checked' : ''}> أسئلة اختيار من متعدد (أكتب أجوبة خاطئة بنفسي)</label>
+      ${itemsEditor(u.items, uNeeds(u), 'unit')}`
+    : pasteBox('unit', true) + `<div class="row" style="justify-content:center"><button class="btn ghost" data-a="uManual" style="color:var(--brand)">أو أدخل المحتوى يدوياً، عنصراً عنصراً</button></div>`}`;
+}
+function uStep3() {
+  const u = S.unit;
+  const recipe = r => `<button class="card" data-a="recipe" data-v="${r.id}" style="padding:16px;gap:10px"><b style="font-size:17px;font-weight:600">${r.name}</b>
+      <ol style="margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:4px">${r.list.map((t, i) => `<li class="small" style="display:flex;gap:6px;align-items:center"><span class="muted" style="width:14px">${i + 1}</span>${chip(tpl(t).kind)}${tpl(t).name}</li>`).join('')}</ol></button>`;
+  const fitNote = x => { const n = K.fits(x.template, u.items), all = K.usable(u.items).length, t = tpl(x.template);
+    if (!n) return `<span class="small" style="color:var(--bad)">لا يعمل مع المحتوى الحالي: ${t.needs === 'sentences' ? 'يحتاج جملاً من 3 كلمات أو أكثر' : 'يحتاج معنى أو جواباً لكل عنصر'}</span>`;
+    return n < all ? `<span class="small muted">يستعمل ${n} من ${all}</span>` : `<span class="small muted">${t.desc}</span>`; };
+  return `${uHead('الأنشطة', 'اختر وصفة جاهزة ثم عدّلها، أو أضف الأنشطة بنفسك. الطالب يراها بهذا الترتيب.')}
+    ${u.acts.length ? '' : `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px">${RECIPES.map(recipe).join('')}
+      <button class="card" data-a="uadd" style="padding:16px;gap:10px;border-style:dashed;border-color:#A99FEF;justify-content:center;align-items:center;color:var(--brand)">${ic('plus', 22, 2)}<b style="font-weight:600">أختار بنفسي</b></button></div>`}
+    ${u.acts.length ? `<ol class="panel flush list" style="margin:0;padding:0;list-style:none">${u.acts.map((x, i) => { const t = tpl(x.template); return `<li class="li">
+      <div style="display:flex;flex-direction:column"><button class="ico" style="width:30px;height:24px;border:0" data-a="umove" data-id="${x.id}" data-v="-1" aria-label="لأعلى" ${i ? '' : 'disabled'}>${ic('up', 16)}</button><button class="ico" style="width:30px;height:24px;border:0" data-a="umove" data-id="${x.id}" data-v="1" aria-label="لأسفل" ${i < u.acts.length - 1 ? '' : 'disabled'}>${ic('down', 16)}</button></div>
+      <span style="width:28px;height:28px;border-radius:50%;background:var(--ground);display:grid;place-items:center;font-weight:700;font-size:14px">${i + 1}</span>${thumb(t.kind)}
+      <div class="grow" style="min-width:180px"><b style="font-weight:600">${t.name}</b> ${chip(t.kind)}<div>${fitNote(x)}</div></div>
+      <select class="in" data-a="uswap" data-id="${x.id}" aria-label="غيّر القالب" style="width:160px;min-height:36px">${TEMPLATES.filter(o => !o.print).map(o => `<option value="${o.id}" ${o.id === x.template ? 'selected' : ''}>${o.name}</option>`).join('')}</select>
+      <button class="btn sm" data-a="tryOne" data-id="${x.id}">${ic('play', 14)}جرّب</button>
+      <button class="ico" data-a="udel" data-id="${x.id}" aria-label="حذف النشاط">${ic('trash', 16)}</button></li>`; }).join('')}</ol>
+      <div class="row"><button class="btn grow" data-a="uadd" style="border-style:dashed;border-color:#A99FEF;color:var(--brand);min-height:52px">${ic('plus', 18, 2)}أضف نشاطاً</button><button class="btn" data-a="uclear" style="min-height:52px">ابدأ من وصفة أخرى</button></div>` : ''}`;
+}
+function uStep4() {
+  const u = S.unit, doors = { practice: 0, test: 0, play: 0 }; u.acts.forEach(x => { const k = tpl(x.template).kind; if (doors[k] != null) doors[k]++; });
+  return `${uHead(esc(u.title || 'وحدة بدون عنوان'), `${u.acts.length} أنشطة · ${K.usable(u.items).length} عنصر`)}
+    <section class="panel split" style="gap:28px"><div class="main" style="flex-basis:380px;gap:14px">
+      <h2 style="font-size:17px">ما يراه الطالب</h2>
+      <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;text-align:center;font-size:13px;font-weight:600;max-width:360px">
+        ${['practice', 'test', 'play'].map(k => `<span style="padding:10px 4px;border-radius:10px;background:${KINDS[k].soft};color:${KINDS[k].ink}">${KINDS[k].door} · ${doors[k]}</span>`).join('')}</div>
+      <label class="check"><input type="checkbox" id="uOrder" ${u.order !== false ? 'checked' : ''}> اقترح ترتيب الأنشطة على الطالب</label>
+      <label class="check"><input type="checkbox" id="uTestLast" ${u.testLast ? 'checked' : ''}> افتح الاختبار بعد إنهاء التمارين فقط</label>
       <label class="check"><input type="checkbox" data-a="usetc" data-k="leaderboard" ${u.settings?.leaderboard !== false ? 'checked' : ''}> لوح المتصدرين في التمارين والألعاب</label>
       <label class="check"><input type="checkbox" data-a="usetc" data-k="readAloud" ${u.settings?.readAloud !== false ? 'checked' : ''}> قراءة الأسئلة بصوت عالٍ</label>
+      <span class="small muted">الاختبار دائماً بمحاولة واحدة، ولا يرى فيه الطلاب لوح المتصدرين.</span>
       ${S.lastLink ? linkBox(S.lastLink) : `<button class="btn pri lg" data-a="mkUnitLink" style="align-self:flex-start">${ic('link', 18)}أنشئ رابط الوحدة</button>`}</div>
-      <div class="side" style="flex-basis:220px;align-items:center;padding:18px;border-radius:12px;background:var(--ground)">${S.lastLink ? '<div id="qr" class="frame" style="width:170px;height:170px;padding:10px"></div><span class="small muted">رمز QR للوحدة</span>' : '<span class="small muted" style="text-align:center;padding:40px 0">بعد إنشاء الرابط يظهر هنا رمز QR</span>'}</div></section></div>`;
+      <div class="side" style="flex-basis:220px;align-items:center;padding:18px;border-radius:12px;background:var(--ground)">${S.lastLink ? '<div id="qr" class="frame" style="width:170px;height:170px;padding:10px"></div><span class="small muted">رمز QR للوحدة</span>' : '<span class="small muted" style="text-align:center;padding:40px 0">بعد إنشاء الرابط يظهر هنا رمز QR</span>'}</div></section>
+    <section class="panel row"><span class="grow muted">بطاقات وأوراق عمل للطباعة من نفس المحتوى.</span><button class="btn" data-a="unitPrint">${ic('print', 16)}اطبع</button></section>`;
+}
+function footUnit() {
+  const st = S.ustep, nextLbl = { 1: 'التالي: المحتوى', 2: 'التالي: الأنشطة', 3: 'التالي: المشاركة' }[st];
+  return `<div class="footbar"><button class="btn" data-a="${st > 1 ? 'ustep' : 'go'}" data-v="${st > 1 ? st - 1 : 'my'}">رجوع</button><span class="muted">${S.unit.acts.length} أنشطة · ${K.usable(S.unit.items).length} عنصر · محفوظ تلقائياً</span><span class="grow"></span>
+    ${st >= 3 ? `<button class="btn" data-a="tryUnit">${ic('play', 16)}جرّب الوحدة كطالب</button>` : ''}
+    ${st < 4 ? `<button class="btn pri lg" data-a="unext">${nextLbl} ${ic('next', 16, 2)}</button>` : ''}</div>`;
 }
 
 // ================= 7. library =================
@@ -269,7 +339,7 @@ function viewLibrary() {
   const L = libEntries(), q = K.norm(S.libQ);
   const match = e => !q || K.norm([e.title, e.subject, e.by, ...(e.items || []).map(i => i.q + ' ' + i.a)].join(' ')).includes(q);
   const acts = L.acts.filter(match), units = L.units.filter(match);
-  const card = e => { const t = tpl(e.template); return `<article class="card"><span class="art" style="background:${KINDS[t.kind].soft};color:${KINDS[t.kind].ink}"><i></i><i></i><i></i></span><div class="body">
+  const card = e => { const t = tpl(e.template); return `<article class="card">${tplArt(t.id)}<div class="body">
       <span class="row" style="gap:6px">${chip(t.kind)}<span class="small muted">${esc(e.subject || '')}${e.grade ? ' · الصف ' + esc(e.grade) : ''}</span></span><b style="font-weight:600;font-size:16px">${esc(e.title)}</b>
       <span class="small muted grow">${t.name} · ${esc(e.by || '')}</span><div class="row" style="gap:6px;margin-top:6px"><button class="btn sm pri" data-a="libUse" data-id="${e.id}">استعمل</button><button class="btn sm" data-a="libCopy" data-id="${e.id}">عدّل نسخة</button><button class="btn sm" data-a="libPrint" data-id="${e.id}">اطبع</button></div></div></article>`; };
   const ucard = e => `<article class="card" style="padding:18px;gap:12px"><span class="row" style="gap:6px"><span class="chip" style="background:var(--brand-soft);color:var(--brand)">وحدة · ${e.acts.length} أنشطة</span><span class="small muted">${esc(e.subject || '')}${e.grade ? ' · الصف ' + esc(e.grade) : ''}</span></span>
@@ -315,7 +385,7 @@ function viewResults() {
 function render() {
   $('#bar').innerHTML = barHTML();
   const v = S.view;
-  $('#main').innerHTML = v === 'my' ? viewMy() : v === 'create' ? viewCreate() : v === 'tpl' ? viewTpl() : v === 'edit' ? viewEdit() : v === 'use' ? viewUse() : v === 'unit' ? viewUnit() : v === 'unitShare' ? viewUnitShare() : v === 'library' ? viewLibrary() : viewResults();
+  $('#main').innerHTML = v === 'my' ? viewMy() : v === 'create' ? viewCreate() : v === 'tpl' ? viewTpl() : v === 'edit' ? viewEdit() : v === 'use' ? viewUse() : v === 'unit' ? viewUnit() : v === 'library' ? viewLibrary() : viewResults();
   $('#foot').innerHTML = v === 'tpl' ? footTpl() : v === 'edit' ? footEdit() : v === 'unit' ? footUnit() : '';
   const qr = $('#qr'); if (qr && S.lastLink && window.QRCode) { try { new QRCode(qr, { text: S.lastLink.length > 2800 ? location.href : S.lastLink, width: 150, height: 150, correctLevel: QRCode.CorrectLevel.L }); } catch (e) { qr.innerHTML = '<span class="small muted">الرابط طويل جداً لرمز QR</span>'; } }
 }
@@ -364,12 +434,12 @@ function fileToImg(f) { return new Promise((res, rej) => { const fr = new FileRe
 async function setPicFile(f) { if (!f || !/^image\//.test(f.type)) return; try { const u = await fileToImg(f); ownerItems(PIC.o).find(x => x.id === PIC.id)[PIC.f] = u; touch(PIC.o); PIC.id = null; renderPic(); render(); } catch (e) { toast('تعذر قراءة الصورة'); } }
 
 // paste dialogs
-function openPaste(o, kind) {
-  $('#modal').innerHTML = `<div class="overlay" data-a="mclose"><div class="sheet"><div class="row"><h2 class="grow">${kind === 'exam' ? 'الصق امتحاناً من Word' : 'الصق قائمة'}</h2><button class="ico" data-a="mclose" aria-label="إغلاق">${ic('x', 16)}</button></div>
-    <p class="small muted" style="margin:0">${kind === 'exam' ? 'كل سؤال يبدأ برقم، وتحته الأجوبة أ) ب) ج) د) أو a) b) c) d). ضع * قبل الجواب الصحيح، وإلا يُعتبر الأول هو الصحيح.' : 'كل سطر: الكلمة ثم المعنى، تفصل بينهما - أو = أو : أو Tab.'}</p>
-    <textarea class="in" id="pasteBox" dir="auto" style="min-height:200px" placeholder="${kind === 'exam' ? '1. Which animal lives in the sea?&#10;a) *dolphin&#10;b) camel&#10;c) lion&#10;d) eagle' : 'cat - قطة&#10;dog - كلب'}"></textarea>
-    <div class="row"><button class="btn pri" data-a="pasteDo" data-o="${o}" data-v="${kind}">أضف</button><button class="btn" data-a="mclose">إلغاء</button></div></div></div>`;
-  setTimeout(() => $('#pasteBox').focus(), 50);
+function openPaste(o) {
+  $('#modal').innerHTML = `<div class="overlay" data-a="mclose"><div class="sheet"><div class="row"><h2 class="grow">الصق دفعة واحدة</h2><button class="ico" data-a="mclose" aria-label="إغلاق">${ic('x', 16)}</button></div>
+    <p class="small muted" style="margin:0">كل عنصر في سطر. كلمة ومعناها: <b dir="ltr">cat - قطة</b> · جملة كاملة في سطر · أو امتحان بالأجوبة أ) ب) ج) د) وضع * قبل الجواب الصحيح.</p>
+    <textarea class="in" id="pasteInl" dir="auto" style="min-height:220px" placeholder="${PASTE_EX}"></textarea>
+    <div class="row"><span id="pasteHint" class="small muted grow"></span><button class="btn pri" data-a="pasteDo" data-o="${o}">أضف</button><button class="btn" data-a="mclose">إلغاء</button></div></div></div>`;
+  setTimeout(() => $('#pasteInl').focus(), 50);
 }
 
 // ================= events =================
@@ -379,15 +449,26 @@ document.addEventListener('click', async e => {
   if ((a === 'picClose' || a === 'mclose') && el.classList.contains('overlay') && e.target !== el) return;
   if (el.tagName === 'A') e.preventDefault();
   if (['itxt', 'iw', 'sets', 'setc', 'usetc', 'uswap'].includes(a)) return;
+  if (el.tagName === 'TEXTAREA') return;
   switch (a) {
     case 'go': go(v); break;
     case 'filter': S.filter = v; render(); break;
     case 'newActivity': S.tplFor = 'activity'; S.pick = 'mcq'; S.draft = null; go('tpl'); break;
-    case 'newUnit': S.unit = { id: uid(), title: '', subject: 'إنجليزي', grade: '', items: [K.newItem(), K.newItem(), K.newItem()], acts: [], order: true, testLast: false, settings: {}, by: DB.teacher(), created: Date.now() }; saveUnit(); go('unit'); break;
+    case 'newUnit': S.unit = { id: uid(), title: '', subject: 'إنجليزي', grade: '', items: [], acts: [], order: true, testLast: false, settings: {}, content: 'pairs', by: DB.teacher(), created: Date.now() }; saveUnit(); S.ustep = 1; go('unit'); setTimeout(() => $('#uTitle') && $('#uTitle').focus(), 30); break;
+    case 'ustep': S.ustep = +v; S.lastLink = null; render(); scrollTo(0, 0); break;
+    case 'unext': { const u = S.unit;
+      if (S.ustep === 1 && !(u.title || '').trim()) { toast('اكتب اسماً للوحدة'); $('#uTitle').focus(); return; }
+      if (S.ustep === 2) { const box = $('#pasteInl'); if (box && box.value.trim()) applyPaste('unit', box.value); if (!K.usable(u.items).length) { toast('أضف المحتوى أولاً'); return; } }
+      S.ustep++; S.lastLink = null; render(); scrollTo(0, 0); break; }
+    case 'uManual': S.unit.items.push(K.newItem(), K.newItem(), K.newItem()); render(); { const f = document.querySelector('[data-a=itxt][data-o=unit]'); f && f.focus(); } break;
+    case 'pasteInl': { const box = $('#pasteInl'); if (applyPaste(o, box.value)) render(); break; }
+    case 'uclear': S.unit.acts = []; saveUnit(); render(); break;
+    case 'tryOne': { const x = S.unit.acts.find(y => y.id === id); if (!K.fits(x.template, S.unit.items)) { toast('هذا النشاط لا يعمل مع المحتوى الحالي'); return; }
+      openPlay(K.pack({ v: 2, code: 'TRY', kind: 'activity', title: S.unit.title || 'وحدة', acts: [{ id: x.id, template: x.template, settings: K.settingsFor(x.template, x.settings) }], items: K.usable(S.unit.items), preview: true })); break; }
     case 'tplFilter': S.tplFilter = v; render(); break;
     case 'pickTpl': S.pick = v; render(); break;
     case 'tplNext':
-      if (S.tplFor === 'unit') { S.unit.acts.push({ id: uid(), template: S.pick, settings: {} }); saveUnit(); S.tplFor = 'activity'; go('unit'); break; }
+      if (S.tplFor === 'unit') { S.unit.acts.push({ id: uid(), template: S.pick, settings: {} }); saveUnit(); S.tplFor = 'activity'; S.ustep = 3; go('unit'); break; }
       if (tpl(S.pick).print && !S.draft) { S.draft = { id: uid(), title: '', template: S.pick, items: [K.newItem(), K.newItem(), K.newItem()], settings: {}, by: DB.teacher(), created: Date.now() }; }
       if (!S.draft) S.draft = { id: uid(), title: '', template: S.pick, items: [K.newItem(), K.newItem(), K.newItem()], settings: {}, by: DB.teacher(), created: Date.now() };
       else S.draft.template = S.pick;
@@ -402,15 +483,16 @@ document.addEventListener('click', async e => {
     case 'picGo': PIC.q = $('#picQ').value; PIC.ql = $('#picL').value; libSearch(); break;
     case 'picUse': ownerItems(PIC.o).find(x => x.id === PIC.id)[PIC.f] = v; touch(PIC.o); PIC.id = null; renderPic(); render(); break;
     case 'picDel': ownerItems(PIC.o).find(x => x.id === PIC.id)[PIC.f] = ''; touch(PIC.o); PIC.id = null; renderPic(); render(); break;
-    case 'pasteExam': openPaste(o, 'exam'); break;
-    case 'pasteList': openPaste(o, 'list'); break;
+    case 'pasteExam': case 'pasteList': openPaste(o); break;
+    case 'mkRight': { const it = ownerItems(o).find(x => x.id === id), j = +el.dataset.k; if (!it) return; const { S } = slotsOf(it);
+      if (!(S[j] || '').trim()) { toast('اكتب الجواب أولاً'); return; }
+      it.p = j; it.a = S[j]; it.w = S.filter((_, i) => i !== j); touch(o); render(); toast('صار «' + it.a + '» هو الجواب الصحيح'); break; }
     case 'mclose': $('#modal').innerHTML = ''; break;
-    case 'pasteDo': { const txt = $('#pasteBox').value, got = v === 'exam' ? K.parseExam(txt) : K.parseList(txt); if (!got.length) { toast(v === 'exam' ? 'لم أجد أسئلة. تأكد أن الأجوبة تبدأ بـ أ) أو a)' : 'القائمة فارغة'); return; }
-      const items = ownerItems(o); const keep = items.filter(x => (x.q || '').trim() || x.qi); items.length = 0; items.push(...keep, ...got); touch(o); $('#modal').innerHTML = ''; render(); toast('أضيف ' + got.length); break; }
-    case 'editNext': if (!K.answered(S.draft.items).length) { toast('أضف سؤالاً واحداً على الأقل مع جوابه'); return; } saveDraft(); S.way = tpl(S.draft.template).print ? 'print' : 'link'; go('use'); break;
-    case 'tryAct': case 'present': if (!K.answered(S.draft.items).length) { toast('أضف سؤالاً واحداً على الأقل مع جوابه'); return; }
+    case 'pasteDo': if (applyPaste(o, $('#pasteInl').value)) { $('#modal').innerHTML = ''; render(); } break;
+    case 'editNext': if (!K.fits(S.draft.template, S.draft.items)) { toast('أضف سؤالاً واحداً على الأقل مع جوابه'); return; } saveDraft(); S.way = tpl(S.draft.template).print ? 'print' : 'link'; go('use'); break;
+    case 'tryAct': case 'present': if (!K.fits(S.draft.template, S.draft.items)) { toast('أضف سؤالاً واحداً على الأقل مع جوابه'); return; }
       openPlay(K.pack({ v: 2, code: 'TRY', kind: 'activity', title: S.draft.title || 'نشاط', acts: [{ id: S.draft.id, template: S.draft.template, settings: K.settingsFor(S.draft.template, S.draft.settings) }], items: K.usable(S.draft.items), preview: true, present: a === 'present' })); break;
-    case 'tryUnit': if (!S.unit.acts.length || !K.answered(S.unit.items).length) { toast('أضف نشاطاً ومحتوى أولاً'); return; }
+    case 'tryUnit': if (!S.unit.acts.length || !K.usable(S.unit.items).length) { toast('أضف نشاطاً ومحتوى أولاً'); return; }
       openPlay(K.pack({ v: 2, code: 'TRY', kind: 'unit', title: S.unit.title || 'وحدة', acts: S.unit.acts.map(x => ({ id: x.id, template: x.template, settings: K.settingsFor(x.template, x.settings) })), settings: { order: S.unit.order !== false, testLast: !!S.unit.testLast }, items: K.usable(S.unit.items), preview: true })); break;
     case 'way': S.way = v; S.lastLink = null; render(); break;
     case 'set': { const t = S.draft; t.settings = Object.assign({}, t.settings, { [el.dataset.k]: v }); saveDraft(); S.lastLink = null; render(); break; }
@@ -426,25 +508,25 @@ document.addEventListener('click', async e => {
     case 'useAct': S.draft = DB.activity(id); S.way = tpl(S.draft.template).print ? 'print' : 'link'; S.tplFor = 'activity'; go('use'); break;
     case 'delAct': confirmBox('حذف هذا النشاط؟ لا يمكن التراجع.', () => { DB.delActivity(id); render(); }); break;
     case 'delUnit': confirmBox('حذف هذه الوحدة؟ لا يمكن التراجع.', () => { DB.delUnit(id); render(); }); break;
-    case 'openUnit': S.unit = DB.unit(id); go('unit'); break;
-    case 'shareUnit': S.unit = DB.unit(id) || S.unit; if (!S.unit.acts.length || !K.answered(S.unit.items).length) { toast('أضف نشاطاً ومحتوى أولاً'); go('unit'); return; } go('unitShare'); break;
+    case 'openUnit': S.unit = DB.unit(id); S.ustep = S.unit.acts.length ? 3 : K.usable(S.unit.items).length ? 3 : 2; go('unit'); break;
+    case 'shareUnit': S.unit = DB.unit(id) || S.unit; S.ustep = !K.usable(S.unit.items).length ? 2 : !S.unit.acts.length ? 3 : 4; if (S.ustep < 4) toast('أكمل المحتوى والأنشطة أولاً'); go('unit'); break;
     case 'mkUnitLink': S.lastLink = await makeLink('unit'); render(); toast('رابط الوحدة جاهز'); break;
     case 'recipe': { const r = RECIPES.find(x => x.id === v); S.unit.acts = r.list.map(t => ({ id: uid(), template: t, settings: {} })); saveUnit(); render(); toast('أضيفت ' + r.list.length + ' أنشطة'); break; }
     case 'umove': { const arr = S.unit.acts, i = arr.findIndex(x => x.id === id), j = i + (+v); if (j < 0 || j >= arr.length) return; [arr[i], arr[j]] = [arr[j], arr[i]]; saveUnit(); render(); break; }
     case 'udel': S.unit.acts = S.unit.acts.filter(x => x.id !== id); saveUnit(); render(); break;
     case 'uadd': S.tplFor = 'unit'; S.pick = 'match'; S.view = 'tpl'; render(); scrollTo(0, 0); break;
-    case 'backUnit': S.tplFor = 'activity'; go('unit'); break;
+    case 'backUnit': S.tplFor = 'activity'; S.ustep = 3; go('unit'); break;
     case 'toUnitPick': { const us = DB.units(); $('#modal').innerHTML = `<div class="overlay" data-a="mclose"><div class="sheet"><div class="row"><h2 class="grow">أضف إلى وحدة</h2><button class="ico" data-a="mclose" aria-label="إغلاق">${ic('x', 16)}</button></div>
         <p class="small muted" style="margin:0">يُضاف القالب إلى الوحدة، ومحتوى النشاط يُنسخ إلى محتواها المشترك. النشاط الأصلي لا يتغير.</p>
         ${us.length ? us.map(u => `<button class="btn" data-a="addToUnit" data-id="${u.id}" style="justify-content:flex-start">${esc(u.title || 'وحدة بدون عنوان')} · ${u.acts.length} أنشطة</button>`).join('') : '<span class="muted">لا توجد وحدات بعد.</span>'}
         <button class="btn pri" data-a="addToNewUnit">${ic('plus', 16, 2)}وحدة جديدة من هذا النشاط</button></div></div>`; break; }
     case 'addToUnit': case 'addToNewUnit': {
       const src = S.draft; let u = a === 'addToUnit' ? DB.unit(id) : { id: uid(), title: src.title || '', subject: 'إنجليزي', grade: '', items: [], acts: [], order: true, testLast: false, settings: {}, by: DB.teacher(), created: Date.now() };
-      u.items = [...K.usable(u.items), ...K.cloneItems(K.usable(src.items))]; u.acts.push({ id: uid(), template: src.template, settings: { ...src.settings } }); DB.saveUnit(u); $('#modal').innerHTML = ''; S.unit = u; go('unit'); toast('أضيف إلى الوحدة'); break; }
+      u.items = [...K.usable(u.items), ...K.cloneItems(K.usable(src.items))]; u.acts.push({ id: uid(), template: src.template, settings: { ...src.settings } }); if (K.tpl(src.template).needs === 'questions') u.content = 'questions'; DB.saveUnit(u); $('#modal').innerHTML = ''; S.unit = u; S.ustep = 3; go('unit'); toast('أضيف إلى الوحدة'); break; }
     case 'libTab': S.libTab = v; render(); break;
     case 'libUse': case 'libCopy': { const e2 = libEntries().acts.find(x => x.id === id); const c = K.cloneActivity({ ...e2, title: e2.title }); c.by = DB.teacher(); delete c.type; DB.saveActivity(c); S.draft = c; S.tplFor = 'activity';
       if (a === 'libUse') { S.way = tpl(c.template).print ? 'print' : 'link'; go('use'); toast('نسخة لك جاهزة للمشاركة'); } else { go('edit'); toast('هذه نسختك. الأصل لم يتغير.'); } break; }
-    case 'libUseUnit': case 'libCopyUnit': { const e2 = libEntries().units.find(x => x.id === id); const c = K.cloneUnit(e2); c.by = DB.teacher(); delete c.type; DB.saveUnit(c); S.unit = c; go(a === 'libUseUnit' ? 'unitShare' : 'unit'); toast('هذه نسختك. الأصل لم يتغير.'); break; }
+    case 'libUseUnit': case 'libCopyUnit': { const e2 = libEntries().units.find(x => x.id === id); const c = K.cloneUnit(e2); c.by = DB.teacher(); delete c.type; DB.saveUnit(c); S.unit = c; S.ustep = a === 'libUseUnit' ? 4 : 2; go('unit'); toast('هذه نسختك. الأصل لم يتغير.'); break; }
     case 'exportCSV': { const L = DB.link(S.resCode); if (!L) return; const res = DB.results(L.code);
       const csv = '﻿' + ['الطالب,النشاط,العلامة,الصحيح,من,الوقت (ث),التاريخ', ...res.map(r => [r.name, tpl((L.acts.find(x => x.id === r.act) || L.acts[0]).template).name, r.score, r.correct, r.total, Math.round(r.ms / 1000), new Date(r.at).toLocaleString()].map(x => `"${String(x).replace(/"/g, '""')}"`).join(','))].join('\n');
       const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' })); const l = document.createElement('a'); l.href = url; l.download = (L.title || 'results') + '.csv'; document.body.appendChild(l); l.click(); l.remove(); setTimeout(() => URL.revokeObjectURL(url), 4000); break; }
@@ -458,6 +540,7 @@ document.addEventListener('input', e => {
   if (el.id === 'libQ') { S.libQ = el.value; const pos = el.selectionStart; render(); const n = $('#libQ'); n.focus(); n.setSelectionRange(pos, pos); return; }
   if (el.id === 'aTitle') { S.draft.title = el.value; saveDraft(); return; }
   if (el.id === 'uTitle') { S.unit.title = el.value; saveUnit(); return; }
+  if (el.id === 'pasteInl') { const h = $('#pasteHint'); if (h) h.textContent = describePaste(el.value); return; }
   if (a === 'itxt') { const it = ownerItems(el.dataset.o).find(x => x.id === el.dataset.id); if (it) { it[el.dataset.f] = el.value; touch(el.dataset.o); } return; }
   if (a === 'iw') { const it = ownerItems(el.dataset.o).find(x => x.id === el.dataset.id); if (it) { it.w[+el.dataset.k] = el.value; touch(el.dataset.o); } return; }
   if (a === 'sets' && el.type === 'number') { S.draft.settings = Object.assign({}, S.draft.settings, { [el.dataset.k]: +el.value || 0 }); saveDraft(); S.lastLink = null; }
@@ -470,6 +553,7 @@ document.addEventListener('change', e => {
   if (a === 'uswap') { const x = S.unit.acts.find(y => y.id === el.dataset.id); x.template = el.value; saveUnit(); render(); }
   if (el.id === 'uSubject') { S.unit.subject = el.value; saveUnit(); }
   if (el.id === 'uGrade') { S.unit.grade = el.value; saveUnit(); }
+  if (el.id === 'uQ') { S.unit.content = el.checked ? 'questions' : 'pairs'; saveUnit(); render(); }
   if (el.id === 'uOrder') { S.unit.order = el.checked; saveUnit(); }
   if (el.id === 'uTestLast') { S.unit.testLast = el.checked; saveUnit(); }
   if (el.id === 'resPick') { S.resCode = el.value; render(); }

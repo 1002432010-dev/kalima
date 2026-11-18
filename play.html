@@ -21,6 +21,34 @@
 .opt.ok{border-color:var(--ok);background:var(--ok-soft)}.opt.no{border-color:var(--bad);background:var(--bad-soft);animation:shake .35s}
 .opt.dim{opacity:.5}
 @keyframes shake{25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+.snk{display:flex;flex-direction:column;gap:10px}
+.snk .prompt{padding:12px 16px;gap:8px;flex-direction:row;justify-content:center;flex-wrap:wrap}.snk .prompt .frame{width:110px;height:76px}.snk .prompt .q{font-size:clamp(20px,3.6vw,28px)}
+.snk canvas{width:100%;display:block;border-radius:16px;touch-action:none;background:#EAF6EF;box-shadow:inset 0 0 0 2px #CFE8DA}
+.snk .hintbar{display:flex;justify-content:space-between;align-items:center;font-weight:600}
+.pad{display:grid;grid-template-columns:repeat(3,64px);grid-template-rows:repeat(2,56px);gap:6px;justify-content:center;direction:ltr}
+.pad button{border:2px solid var(--line);background:var(--surface);border-radius:14px;font-size:24px;font-weight:700;color:var(--ink)}
+.pad button:active{background:var(--brand-soft);border-color:var(--brand)}
+@media (pointer:fine){.pad{display:none}}
+.stage.wide{max-width:1080px}
+.cw{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:18px;align-items:start}
+@media (max-width:820px){.cw{grid-template-columns:minmax(0,1fr)}.cwClues{order:-1;flex-direction:row!important;overflow-x:auto;padding:4px 2px 10px}.cwClues .clue{flex:0 0 150px}}
+.cwMain{display:flex;flex-direction:column;align-items:center;gap:16px}
+.cwGrid{display:grid;gap:3px}
+.cwGrid>span{width:var(--c);height:var(--c)}
+.cell{position:relative;width:var(--c);height:var(--c);border:2px solid #C9CDD8;border-radius:7px;background:#fff;padding:0;font-size:calc(var(--c) * .52);font-weight:700;text-transform:uppercase;display:grid;place-items:center;color:var(--ink)}
+.cell i{position:absolute;top:1px;inset-inline-start:3px;font-size:10px;font-style:normal;font-weight:600;color:var(--muted)}
+.cell.inw{background:#F1EFFE;border-color:#B9B1F2}.cell.cur{border-color:var(--brand);box-shadow:0 0 0 3px #D9D4FB}
+.cell.ok{background:var(--ok-soft);border-color:#8FD3B5;color:var(--ok-ink)}.cell.bad{border-color:var(--bad);background:var(--bad-soft);animation:shake .35s}
+.cwClues{display:flex;flex-direction:column;gap:12px}
+.clue{position:relative;border:0;background:#FFFDF6;border-radius:6px;padding:14px 12px 10px;box-shadow:0 2px 8px rgba(29,33,51,.12);display:flex;align-items:center;gap:10px;text-align:start;font-weight:600;font-size:16px;color:var(--ink);transform:rotate(-1deg)}
+.clue:nth-child(even){transform:rotate(1.2deg)}
+.clue::before{content:'';position:absolute;top:-7px;left:50%;width:54px;height:16px;margin-left:-27px;background:rgba(255,214,120,.75);transform:rotate(-3deg)}
+.clue .frame{width:64px;height:54px;flex:none;border-radius:4px}
+.clue b{min-width:26px;height:26px;border-radius:50%;background:var(--ink);color:#fff;display:grid;place-items:center;font-size:13px;flex:none}
+.clue.on{outline:3px solid var(--brand);outline-offset:2px}.clue.done{opacity:.55}.clue.done b{background:var(--ok)}
+.bank{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;max-width:560px}
+.bank button{min-width:48px;height:52px;border-radius:12px;border:2px solid var(--line);background:#fff;font-size:22px;font-weight:700;text-transform:uppercase;padding:0 10px}
+.bank button:active{background:var(--brand-soft);border-color:var(--brand)}
 .feedback{min-height:26px;text-align:center;font-weight:600}
 .match{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px}.match .col{display:flex;flex-direction:column;gap:10px}
 .mi{min-height:64px;border:2px solid var(--line);background:var(--surface);border-radius:12px;padding:8px 10px;font-size:17px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:8px;overflow-wrap:anywhere}
@@ -33,6 +61,8 @@
 .tiles{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
 .tile{width:52px;height:56px;border-radius:12px;border:2px solid var(--line);background:var(--surface);font-size:24px;font-weight:700}
 .tile[disabled]{opacity:.25}
+.tile.w{width:auto;min-width:52px;padding:0 14px;font-size:20px;font-weight:600}
+.built{min-height:60px;border-bottom:3px solid var(--ink);display:flex;gap:8px;flex-wrap:wrap;justify-content:center;align-items:center;padding:6px;font-size:22px;font-weight:600}
 .slots{display:flex;gap:6px;justify-content:center;flex-wrap:wrap}.slots span{width:44px;height:52px;border-bottom:3px solid var(--ink);display:grid;place-items:center;font-size:26px;font-weight:700}
 .score{font-size:clamp(64px,16vw,96px);font-weight:700;line-height:1;letter-spacing:-.04em;font-variant-numeric:tabular-nums}
 .lb li{display:flex;align-items:center;gap:12px;padding:10px 14px;border-bottom:1px solid var(--line-soft)}.lb li:last-child{border-bottom:0}
@@ -87,7 +117,7 @@ function render() {
   if (P.view === 'name') {
     $('#main').innerHTML = `<div class="stage" style="max-width:440px;padding-top:56px"><div style="text-align:center;display:flex;flex-direction:column;gap:6px"><span class="muted" dir="auto">${esc(P.data.title)}</span><h1 style="font-size:32px">ما اسمك؟</h1></div>
       <form id="nameForm" style="display:flex;flex-direction:column;gap:12px"><input class="in" id="nameIn" dir="auto" autocomplete="off" placeholder="اكتب اسمك الكامل" style="font-size:20px;min-height:56px;text-align:center"><button class="btn pri lg">ابدأ</button></form></div>`;
-    setTimeout(() => $('#nameIn').focus(), 30); return;
+    setTimeout(() => { const n = $('#nameIn'); n && n.focus(); }, 30); return;
   }
   if (P.view === 'unit') {
     const acts = P.data.acts, doneN = acts.filter(a => bestOf(a) != null).length, next = acts.find(a => bestOf(a) == null && !locked(a));
@@ -112,23 +142,29 @@ const thumbBig = a => { const k = tpl(a.template).kind; return `<span style="wid
 
 // ================= running an activity =================
 function start(act) {
+  snakeStop();
   const st = act.settings || K.settingsFor(act.template);
   if (!P.data.preview && st.attempts > 0 && attemptsUsed(act) >= st.attempts) { bar(); $('#main').innerHTML = `<div class="stage"><div class="panel empty"><h2>انتهت محاولاتك لهذا النشاط</h2><span>عدد المحاولات المسموح: ${st.attempts}</span>${P.data.kind === 'unit' ? '<button class="btn pri" data-a="toUnit">رجوع للوحدة</button>' : ''}</div></div>`; return; }
-  const t = tpl(act.template), items = K.oriented(P.data.items, st.swap);
+  const t = tpl(act.template), items = t.id === 'order' ? K.usable(P.data.items) : K.oriented(P.data.items, st.swap);
   if (t.game) return launchGame(act, items, st);
   const pool = st.shuffle ? K.shuffle(items) : items.slice();
   const R = { act, st, t, items, i: 0, correct: 0, tries: 0, wrong: [], t0: Date.now(), locked: false };
   if (t.id === 'mcq' || t.id === 'quiz') R.qs = pool.map(it => ({ it, opts: K.options(it, items) }));
   if (t.id === 'tf') R.qs = pool.map(it => { const truth = Math.random() < .5, other = K.shuffle(items.filter(x => K.norm(x.a) !== K.norm(it.a)))[0]; return { it, shown: truth || !other ? it : other, truth: truth || !other }; });
   if (t.id === 'spell') R.qs = pool.filter(it => { const n = [...it.a.replace(/\s+/g, '')].length; return n >= 2 && n <= 14; }).map(it => { const L = [...it.a.replace(/\s+/g, '')]; let sh = K.shuffle(L), g = 0; while (L.length > 1 && sh.join('') === L.join('') && g++ < 9) sh = K.shuffle(L); return { it, L, tiles: sh.map((c, k) => ({ c, k, used: false })), got: [] }; });
+  if (t.id === 'order') R.qs = pool.map(it => { const s = K.sentenceOf(it); if (!s) return null; const L = s.trim().split(/\s+/); let sh = K.shuffle(L), g = 0; while (sh.join(' ') === L.join(' ') && g++ < 9) sh = K.shuffle(L);
+    const hint = s === it.q ? it.a : it.q; return { it: { id: it.id, q: K.words(hint) < 3 ? hint : '', qi: it.qi, a: s }, say: s, L, sep: ' ', tiles: sh.map((c, k) => ({ c, k, used: false })), got: [] }; }).filter(Boolean);
+  if (t.id === 'snake') { R.qs = pool.map(it => ({ it, opts: K.options(it, items) })); R.sn = null; }
   if (t.id === 'type') R.qs = pool.map(it => ({ it }));
   if (t.id === 'flash') R.qs = pool.map(it => ({ it, flip: false }));
   if (t.id === 'match') { R.rounds = []; for (let k = 0; k < pool.length; k += 5) R.rounds.push(pool.slice(k, k + 5)); if (R.rounds.length > 1 && R.rounds.at(-1).length < 2) R.rounds.at(-2).push(...R.rounds.pop()); R.r = 0; R.sel = null; R.gone = []; R.order = K.shuffle(R.rounds[0].map(x => x.id)); R.total = pool.length; R.missed = new Set(); }
+  if (t.id === 'cross') { R.boards = cwBoards(pool); R.b = 0; R.cwTotal = R.boards.reduce((n, b) => n + b.words.length, 0); R.solved = 0; if (!R.cwTotal) R.qs = []; else { P.run = R; P.view = 'run'; draw(); return; } }
   if (!R.qs && t.id !== 'match' || (R.qs && !R.qs.length)) { bar(); $('#main').innerHTML = `<div class="stage"><div class="panel empty"><h2>لا يوجد محتوى مناسب لهذا القالب</h2></div></div>`; return; }
   P.run = R; P.view = 'run'; draw(); autoSay();
 }
-function autoSay() { const R = P.run; if (!R || !R.st.readAloud || R.done) return; const q = R.qs && R.qs[R.i]; if (q && q.it && (R.t.id === 'mcq' || R.t.id === 'quiz' || R.t.id === 'tf')) setTimeout(() => K.speak(q.it.q), 200); }
+function autoSay() { const R = P.run; if (!R || !R.st.readAloud || R.done) return; const q = R.qs && R.qs[R.i]; if (q && q.it && (R.t.id === 'mcq' || R.t.id === 'quiz' || R.t.id === 'tf' || R.t.id === 'snake')) setTimeout(() => K.speak(q.it.q), 200); }
 function head(R) {
+  if (R.t.id === 'cross') return `<div class="row" style="flex-wrap:nowrap"><button class="btn sm ghost" data-a="quit">${P.data.kind === 'unit' ? 'رجوع للوحدة' : 'خروج'}</button><div class="progress grow"><i style="width:${R.solved / R.cwTotal * 100}%"></i></div><span class="small muted" style="font-variant-numeric:tabular-nums">${R.solved} / ${R.cwTotal}</span></div>`;
   const n = R.qs ? R.qs.length : R.total, at = R.qs ? R.i : R.gone.length + R.rounds.slice(0, R.r).reduce((s, r) => s + r.length, 0);
   return `<div class="row" style="flex-wrap:nowrap"><button class="btn sm ghost" data-a="quit">${P.data.kind === 'unit' ? 'رجوع للوحدة' : 'خروج'}</button><div class="progress grow"><i style="width:${at / n * 100}%"></i></div><span class="small muted" style="font-variant-numeric:tabular-nums">${Math.min(at + 1, n)} / ${n}</span></div>`;
 }
@@ -144,12 +180,20 @@ function draw() {
   if (t === 'type') { const q = R.qs[R.i]; body = promptHTML(q.it) + `<form id="typeForm" class="row" style="justify-content:center"><input class="in" id="typeIn" dir="auto" autocomplete="off" spellcheck="false" placeholder="اكتب الجواب" style="max-width:340px;font-size:22px;text-align:center;min-height:56px"><button class="btn pri lg">تحقق</button></form><div class="feedback" id="fb"></div>`; }
   if (t === 'spell') { const q = R.qs[R.i]; body = promptHTML(q.it) + `<div class="slots" dir="${K.dirOf(q.it.a)}">${q.L.map((c, k) => `<span>${esc(q.got[k] ? q.got[k].c : '')}</span>`).join('')}</div>
     <div class="tiles" dir="${K.dirOf(q.it.a)}">${q.tiles.map((x, k) => `<button class="tile" data-a="tile" data-k="${k}" ${x.used || R.locked ? 'disabled' : ''}>${esc(x.c)}</button>`).join('')}</div><div class="row" style="justify-content:center"><button class="btn sm" data-a="undo" ${q.got.length && !R.locked ? '' : 'disabled'}>تراجع</button></div><div class="feedback" id="fb"></div>`; }
+  if (t === 'order') { const q = R.qs[R.i], d = K.dirOf(q.say); body = (q.it.q || q.it.qi ? promptHTML(q.it) : '<p class="muted" style="text-align:center;margin:0;font-size:18px">رتّب الكلمات لتكوّن جملة صحيحة</p>') + `<div class="built" dir="${d}">${q.got.map(x => `<span>${esc(x.c)}</span>`).join('')}</div>
+    <div class="tiles" dir="${d}">${q.tiles.map((x, k) => `<button class="tile w" data-a="tile" data-k="${k}" ${x.used || R.locked ? 'disabled' : ''}>${esc(x.c)}</button>`).join('')}</div><div class="row" style="justify-content:center"><button class="btn sm" data-a="undo" ${q.got.length && !R.locked ? '' : 'disabled'}>تراجع</button>${R.st.readAloud ? `<button class="say" data-a="say" aria-label="استمع">${ic(SPEAK)}</button>` : ''}</div><div class="feedback" id="fb"></div>`; }
+  if (t === 'snake') { const q = R.qs[R.i]; body = `<div class="snk"><div class="prompt">${frame(q.it.qi)}${q.it.q ? `<div class="q" dir="auto">${esc(q.it.q)}</div>` : ''}${q.it.q ? `<button class="say" data-a="say" aria-label="استمع">${ic(SPEAK)}</button>` : ''}</div>
+    <div class="hintbar"><span class="muted small" id="snHint">${R.sn && R.sn.moving ? 'كُل الجواب الصحيح' : 'اضغط سهماً، أو اسحب بإصبعك، لتبدأ'}</span><span id="snLen" class="small muted">الطول: ${R.sn ? R.sn.body.length : 3}</span></div>
+    <canvas id="snCv"></canvas><div class="pad"><span></span><button data-a="sdir" data-v="u" aria-label="أعلى">↑</button><span></span><button data-a="sdir" data-v="l" aria-label="يسار">←</button><button data-a="sdir" data-v="d" aria-label="أسفل">↓</button><button data-a="sdir" data-v="r" aria-label="يمين">→</button></div>
+    <div class="feedback" id="fb"></div></div>`; }
+  if (t === 'cross') { body = cwHTML(R); $('#main').innerHTML = `<div class="stage wide">${head(R)}${body}</div>`; return; }
   if (t === 'flash') { const q = R.qs[R.i]; body = `<button class="flash" data-a="flip"><div class="face ${q.flip ? 'back' : ''}">${q.flip ? `${frame(q.it.ai)}<span dir="auto">${esc(q.it.a)}</span>` : `${frame(q.it.qi)}<span dir="auto">${esc(q.it.q)}</span>`}</div></button>
     <p class="small muted" style="text-align:center;margin:0">اضغط على البطاقة لقلبها</p><div class="row" style="justify-content:center"><button class="say" data-a="say" aria-label="استمع">${ic(SPEAK)}</button></div>
     <div class="opts"><button class="opt" data-a="know" data-v="0" style="color:var(--bad);font-size:17px">لم أعرفها</button><button class="opt" data-a="know" data-v="1" style="color:var(--ok-ink);font-size:17px">عرفتها</button></div>`; }
   if (t === 'match') { const round = R.rounds[R.r]; body = `<p class="muted" style="text-align:center;margin:0">اختر عنصراً من كل عمود ليتطابقا</p><div class="match"><div class="col">${round.map(it => `<button class="mi ${R.gone.includes(it.id) ? 'gone' : ''} ${R.sel && R.sel.s === 'q' && R.sel.id === it.id ? 'sel' : ''}" data-a="mt" data-s="q" data-id="${it.id}">${frame(it.qi)}<span dir="auto">${esc(it.q)}</span></button>`).join('')}</div>
     <div class="col">${R.order.map(id => { const it = round.find(x => x.id === id); return `<button class="mi ${R.gone.includes(id) ? 'gone' : ''} ${R.sel && R.sel.s === 'a' && R.sel.id === id ? 'sel' : ''}" data-a="mt" data-s="a" data-id="${id}">${frame(it.ai)}<span dir="auto">${esc(it.a)}</span></button>`; }).join('')}</div></div>`; }
   $('#main').innerHTML = `<div class="stage">${head(R)}${body}</div>`;
+  if (t === 'snake') snakeRound();
   const ti = $('#typeIn'); if (ti) ti.focus();
 }
 // first try counts; practice shows the right answer at once, test moves on without feedback
@@ -166,7 +210,211 @@ function answer(ok, revealText) {
   }
 }
 function next() { const R = P.run; R.i++; R.tries = 0; R.locked = false; if (R.i >= R.qs.length) return end(); draw(); autoSay(); }
-function end() { const R = P.run; R.done = true; const total = R.qs ? R.qs.length : R.total; finish(R.act, { correct: R.correct, total, ms: Date.now() - R.t0, wrong: R.wrong }); }
+function end() { const R = P.run; snakeStop(); R.done = true; const total = R.qs ? R.qs.length : R.total; finish(R.act, { correct: R.correct, total, ms: Date.now() - R.t0, wrong: R.wrong }); }
+
+// ================= snake: the question sits on top, the snake eats the right answer =================
+const SN = { cols: 18, rows: 12, step: 210, timer: null, imgs: {} };
+const SN_COL = ['#FFE3A3', '#CFE3FF', '#FFD3DF', '#E3D7FF'];
+function snakeStop() { if (SN.timer) { clearInterval(SN.timer); SN.timer = null; } }
+function snakeRound() {
+  const R = P.run, cv = $('#snCv'); if (!cv) return;
+  const W = cv.parentNode.clientWidth; if (W < 560) { SN.cols = 11; SN.rows = 12; } else { SN.cols = 18; SN.rows = 12; }
+  if (R.sn) R.sn.body.forEach(b => { b.x %= SN.cols; b.y %= SN.rows; });
+  const cell = Math.floor(W / SN.cols), dpr = window.devicePixelRatio || 1;
+  cv.width = cell * SN.cols * dpr; cv.height = cell * SN.rows * dpr; cv.style.height = cell * SN.rows + 'px'; SN.cell = cell; SN.dpr = dpr;
+  if (!R.sn) { const y = Math.floor(SN.rows / 2), x = Math.floor(SN.cols / 2); R.sn = { body: [{ x, y }, { x: x + 1, y }, { x: x + 2, y }], dir: { x: -1, y: 0 }, queue: [], grow: 0, moving: false }; }
+  // place the four answers as labelled tiles that do not overlap each other or the snake's head area
+  const g = cv.getContext('2d'); g.font = `600 ${Math.round(cell * .5)}px Rubik, system-ui, sans-serif`;
+  const q = R.qs[R.i], head = R.sn.body[0], taken = new Set(R.sn.body.map(c => c.x + ',' + c.y)), out = [];
+  for (const o of K.shuffle(q.opts)) {
+    const img = !!o.i, w = img ? 2 : Math.max(2, Math.min(SN.cols < 12 ? 5 : 7, Math.ceil((g.measureText(o.t || '').width + cell * .7) / cell))), h = img ? 2 : 1;
+    if (img && !SN.imgs[o.i]) { const im = new Image(); im.crossOrigin = 'anonymous'; im.src = o.i; SN.imgs[o.i] = im; }
+    for (let tries = 0; tries < 200; tries++) {
+      const x = Math.floor(Math.random() * (SN.cols - w)), y = Math.floor(Math.random() * (SN.rows - h)), cells = [];
+      for (let i = 0; i < w; i++) for (let j = 0; j < h; j++) cells.push((x + i) + ',' + (y + j));
+      const near = Math.abs(x + w / 2 - head.x) + Math.abs(y + h / 2 - head.y) < 4;
+      const clash = cells.some(c => taken.has(c)) || out.some(p => x <= p.x + p.w && p.x <= x + w && y <= p.y + p.h && p.y <= y + h);
+      if (!near && !clash) { out.push({ x, y, w, h, o, col: SN_COL[out.length % 4] }); break; }
+    }
+  }
+  R.sn.pellets = out; R.locked = false; snakeDraw();
+  snakeStop(); SN.timer = setInterval(snakeTick, SN.step);
+}
+function snakeTurn(d) {
+  const R = P.run; if (!R || R.t.id !== 'snake' || !R.sn) return;
+  const v = { u: { x: 0, y: -1 }, d: { x: 0, y: 1 }, l: { x: -1, y: 0 }, r: { x: 1, y: 0 } }[d]; if (!v) return;
+  const last = R.sn.queue.length ? R.sn.queue[R.sn.queue.length - 1] : R.sn.dir;
+  if (v.x === -last.x && v.y === -last.y && R.sn.moving) return;
+  if (R.sn.queue.length < 3) R.sn.queue.push(v);
+  if (!R.sn.moving) { R.sn.moving = true; const h = $('#snHint'); if (h) h.textContent = 'كُل الجواب الصحيح'; }
+}
+function snakeTick() {
+  const R = P.run; if (!R || R.done || !R.sn || R.t.id !== 'snake') return snakeStop();
+  const S2 = R.sn; if (!S2.moving || R.locked) return snakeDraw();
+  if (S2.queue.length) S2.dir = S2.queue.shift();
+  const h = S2.body[0], n = { x: (h.x + S2.dir.x + SN.cols) % SN.cols, y: (h.y + S2.dir.y + SN.rows) % SN.rows };
+  S2.body.unshift(n); if (S2.grow > 0) S2.grow--; else S2.body.pop();
+  const hit = S2.pellets.find(p => n.x >= p.x && n.x < p.x + p.w && n.y >= p.y && n.y < p.y + p.h);
+  if (hit) {
+    if (hit.o.ok) { S2.grow += 2; hit.eaten = true; snakeDraw(); answer(true); }
+    else { S2.pellets = S2.pellets.filter(p => p !== hit); S2.flash = 6; if (S2.body.length > 3) S2.body.splice(-1, 1);
+      if (R.st.mode === 'test') answer(false);
+      else { R.tries++; K.tone(false); if (R.tries === 1) R.wrong.push(R.qs[R.i].it.q || R.qs[R.i].it.a); const fb = $('#fb'); if (fb) fb.innerHTML = '<span style="color:var(--bad)">ليس هذا. جرّب جواباً آخر</span>'; } }
+  }
+  const l = $('#snLen'); if (l) l.textContent = 'الطول: ' + S2.body.length;
+  snakeDraw();
+}
+function rr(g, x, y, w, h, r) { g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
+function snakeDraw() {
+  const R = P.run, cv = $('#snCv'); if (!cv || !R || !R.sn) return;
+  const g = cv.getContext('2d'), c = SN.cell, S2 = R.sn; g.setTransform(SN.dpr, 0, 0, SN.dpr, 0, 0);
+  g.fillStyle = '#EAF6EF'; g.fillRect(0, 0, c * SN.cols, c * SN.rows);
+  g.fillStyle = '#DDEFE4'; for (let x = 0; x < SN.cols; x++) for (let y = 0; y < SN.rows; y++) if ((x + y) % 2) g.fillRect(x * c, y * c, c, c);
+  for (const p of S2.pellets) { if (p.eaten) continue; const x = p.x * c + 2, y = p.y * c + 2, w = p.w * c - 4, h = p.h * c - 4;
+    g.fillStyle = p.col; rr(g, x, y, w, h, c * .3); g.fill(); g.lineWidth = 2; g.strokeStyle = 'rgba(29,33,51,.25)'; g.stroke();
+    const im = p.o.i && SN.imgs[p.o.i];
+    if (im && im.complete && im.naturalWidth) { const k = Math.min((w - 8) / im.naturalWidth, (h - 8) / im.naturalHeight); g.drawImage(im, x + (w - im.naturalWidth * k) / 2, y + (h - im.naturalHeight * k) / 2, im.naturalWidth * k, im.naturalHeight * k); }
+    else { g.fillStyle = '#1D2133'; g.font = `600 ${Math.round(c * .5)}px Rubik, system-ui, sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.direction = K.dirOf(p.o.t); g.fillText(p.o.t || '', x + w / 2, y + h / 2 + 1, w - 6); } }
+  S2.body.forEach((b, i) => { const pad = i ? c * .1 : c * .04; g.fillStyle = S2.flash > 0 && S2.flash % 2 ? '#C2362B' : i ? (i % 2 ? '#5B4DE0' : '#4C3DD6') : '#2E2399'; rr(g, b.x * c + pad, b.y * c + pad, c - 2 * pad, c - 2 * pad, c * .32); g.fill(); });
+  if (S2.flash > 0) S2.flash--;
+  const h = S2.body[0], d = S2.dir; g.fillStyle = '#fff';
+  [[-.18, -.18], [.18, -.18]].forEach(([a, b]) => { const ex = d.x ? d.x * .15 : a, ey = d.y ? d.y * .15 : a; const ox = d.x ? 0 : 0; g.beginPath(); g.arc((h.x + .5 + (d.x ? d.x * .18 : (a < 0 ? -.2 : .2))) * c, (h.y + .5 + (d.y ? d.y * .18 : (a < 0 ? -.2 : .2))) * c, c * .1, 0, 7); g.fill(); });
+}
+document.addEventListener('keydown', e => { const k = { ArrowUp: 'u', ArrowDown: 'd', ArrowLeft: 'l', ArrowRight: 'r', w: 'u', s: 'd', a: 'l', d: 'r' }[e.key]; if (k && P.run && P.run.t.id === 'snake' && !P.run.done) { e.preventDefault(); snakeTurn(k); } });
+let snTouch = null;
+document.addEventListener('touchstart', e => { if (e.target.id === 'snCv') { const t = e.touches[0]; snTouch = { x: t.clientX, y: t.clientY }; } }, { passive: true });
+document.addEventListener('touchmove', e => { if (!snTouch) return; const t = e.touches[0], dx = t.clientX - snTouch.x, dy = t.clientY - snTouch.y; if (Math.max(Math.abs(dx), Math.abs(dy)) < 24) return;
+  snakeTurn(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'r' : 'l') : (dy > 0 ? 'd' : 'u')); snTouch = { x: t.clientX, y: t.clientY }; }, { passive: true });
+document.addEventListener('touchend', () => snTouch = null);
+window.addEventListener('resize', () => { if (P.run && P.run.t.id === 'snake' && !P.run.done && $('#snCv')) { const pel = P.run.sn.pellets; snakeRound(); } });
+
+// ================= crossword: a picture or hint per word, fill the grid =================
+const letters = s => [...String(s || '').trim()];
+const cwNorm = c => K.norm(c).replace(/[أإآ]/g, 'ا').replace(/ى/g, 'ي');
+function cwLayout(words) {
+  const grid = new Map(), placed = [], left = [];
+  const at = (r, c) => grid.get(r + ',' + c);
+  function fits(w, r, c, dr, dc) {
+    let cross = 0;
+    if (at(r - dr, c - dc) || at(r + dr * w.L.length, c + dc * w.L.length)) return -1;
+    for (let k = 0; k < w.L.length; k++) { const rr = r + dr * k, cc = c + dc * k, g = at(rr, cc);
+      if (g) { if (cwNorm(g.ch) !== cwNorm(w.L[k])) return -1; if (g.dirs.includes(dr ? 'd' : 'a')) return -1; cross++; }
+      else if (at(rr + dc, cc + dr) || at(rr - dc, cc - dr)) return -1; }
+    return cross;
+  }
+  function put(w, r, c, dr, dc) { w.r = r; w.c = c; w.dir = dr ? 'd' : 'a'; placed.push(w);
+    w.L.forEach((ch, k) => { const key = (r + dr * k) + ',' + (c + dc * k), g = grid.get(key) || { ch, dirs: [] }; g.dirs.push(w.dir); grid.set(key, g); }); }
+  const box = () => { let a = 1e9, b = -1e9, x = 1e9, y = -1e9; for (const k of grid.keys()) { const [r, c] = k.split(',').map(Number); a = Math.min(a, r); b = Math.max(b, r); x = Math.min(x, c); y = Math.max(y, c); } return { r0: a, r1: b, c0: x, c1: y }; };
+  words.forEach((w, i) => {
+    if (!i) return put(w, 0, 0, 0, 1);
+    let best = null;
+    for (const p of placed) for (let j = 0; j < p.L.length; j++) for (let k = 0; k < w.L.length; k++) {
+      if (cwNorm(p.L[j]) !== cwNorm(w.L[k])) continue;
+      const [r, c, dr, dc] = p.dir === 'a' ? [p.r - k, p.c + j, 1, 0] : [p.r + j, p.c - k, 0, 1];
+      const x = fits(w, r, c, dr, dc); if (x < 1) continue;
+      const b = box(), R0 = Math.min(b.r0, r), R1 = Math.max(b.r1, r + dr * (w.L.length - 1)), C0 = Math.min(b.c0, c), C1 = Math.max(b.c1, c + dc * (w.L.length - 1));
+      if (R1 - R0 > 13 || C1 - C0 > 13) continue;
+      const sc = x * 20 - (R1 - R0 + 1) * (C1 - C0 + 1) / 4 - Math.abs((R1 - R0) - (C1 - C0));
+      if (!best || sc > best.sc) best = { r, c, dr, dc, sc };
+    }
+    if (best) put(w, best.r, best.c, best.dr, best.dc); else left.push(w);
+  });
+  // words that share no letter go into an empty corner of the same board
+  for (const w of left.splice(0)) {
+    const b0 = box(); let best = null;
+    for (const [dr, dc] of [[0, 1], [1, 0]]) for (let r = b0.r0 - 2; r <= b0.r1 + 2; r++) for (let c = b0.c0 - 2; c <= b0.c1 + 2; c++) {
+      if (fits(w, r, c, dr, dc) < 0) continue;
+      const R0 = Math.min(b0.r0, r), R1 = Math.max(b0.r1, r + dr * (w.L.length - 1)), C0 = Math.min(b0.c0, c), C1 = Math.max(b0.c1, c + dc * (w.L.length - 1));
+      if (R1 - R0 > 13 || C1 - C0 > 13) continue;
+      const sc = (R1 - R0 + 1) * (C1 - C0 + 1) + Math.abs((R1 - R0) - (C1 - C0)) * 2;
+      if (!best || sc < best.sc) best = { r, c, dr, dc, sc };
+    }
+    if (best) put(w, best.r, best.c, best.dr, best.dc); else left.push(w);
+  }
+  const b = box();
+  placed.forEach(w => { w.r -= b.r0; w.c -= b.c0; });
+  let cross = 0; for (const g of grid.values()) if (g.dirs.length > 1) cross++;
+  return { words: placed, left, cross, rows: b.r1 - b.r0 + 1, cols: b.c1 - b.c0 + 1 };
+}
+function cwBoards(pool) {
+  let rest = pool.map(it => ({ it, L: letters(it.a) })).filter(w => w.L.length >= 2 && w.L.length <= 12 && !w.L.includes(' '));
+  const boards = [];
+  while (rest.length && boards.length < 30) {
+    const take = rest.slice(0, 8); let lay = null;
+    // try many orders and keep the layout that fits the most words, then the most compact
+    for (let t = 0; t < 60; t++) {
+      const order = t ? K.shuffle(take) : take.slice().sort((a, b) => b.L.length - a.L.length);
+      const fresh = order.map(w => ({ it: w.it, L: w.L })), l = cwLayout(fresh);
+      const sc = l.words.length * 1000 + l.cross * 60 - l.rows * l.cols - Math.abs(l.rows - l.cols) * 4;
+      if (!lay || sc > lay.sc) { lay = l; lay.sc = sc; }
+      if (l.cross >= take.length - 1 && t > 20) break;
+    }
+    boards.push(lay); rest = [...lay.left, ...rest.slice(8)];
+  }
+  boards.forEach(b => {
+    const starts = [...new Set(b.words.map(w => w.r + ',' + w.c))].sort((x, y) => { const [a, c] = x.split(',').map(Number), [d, e] = y.split(',').map(Number); return a - d || c - e; });
+    b.words.forEach(w => { w.n = starts.indexOf(w.r + ',' + w.c) + 1; w.done = false; w.hint = false; w.miss = false; });
+    b.words.sort((x, y) => x.n - y.n || (x.dir === 'a' ? -1 : 1));
+    b.cells = {}; b.words.forEach((w, wi) => w.L.forEach((ch, k) => { const key = w.dir === 'a' ? w.r + ',' + (w.c + k) : (w.r + k) + ',' + w.c; const c = b.cells[key] || (b.cells[key] = { ch, v: '', lock: false, ws: [] }); c.ws.push(wi); }));
+    b.sel = 0; b.pos = 0; b.dir = K.dirOf(b.words[0].L.join(''));
+  });
+  return boards;
+}
+const cwKey = (w, k) => w.dir === 'a' ? w.r + ',' + (w.c + k) : (w.r + k) + ',' + w.c;
+function cwHTML(R) {
+  const B = R.boards[R.b], w = B.words[B.sel], sel = new Set(w.L.map((_, k) => cwKey(w, k))), cur = cwKey(w, B.pos);
+  const num = {}; B.words.forEach(x => num[x.r + ',' + x.c] = x.n);
+  let grid = '';
+  for (let r = 0; r < B.rows; r++) for (let c = 0; c < B.cols; c++) { const key = r + ',' + c, cell = B.cells[key];
+    grid += cell ? `<button class="cell ${cell.lock ? 'ok' : ''} ${sel.has(key) && !cell.lock ? 'inw' : ''} ${key === cur && !w.done ? 'cur' : ''} ${cell.bad ? 'bad' : ''}" data-a="cwCell" data-k="${key}" aria-label="خانة">${num[key] ? `<i>${num[key]}</i>` : ''}${esc(cell.v)}</button>` : '<span></span>'; }
+  if (!w.bank) { const pool = B.words.flatMap(x => x.L).filter(ch => !w.L.some(l => cwNorm(l) === cwNorm(ch))); w.bank = K.shuffle([...new Set(w.L.map(l => l.toLowerCase())), ...K.shuffle([...new Set(pool.map(l => l.toLowerCase()))]).slice(0, 3)]); }
+  const arrow = x => x.dir === 'd' ? '↓' : B.dir === 'rtl' ? '←' : '→';
+  const clues = B.words.map((x, i) => `<button class="clue ${i === B.sel ? 'on' : ''} ${x.done ? 'done' : ''}" data-a="cwSel" data-w="${i}"><b>${x.done ? '✓' : x.n}</b>${frame(x.it.qi)}<span class="grow" dir="auto">${esc(x.it.q || '')}</span><span class="muted">${arrow(x)} ${x.L.length}</span></button>`).join('');
+  return `<div class="cw"><div class="cwMain">
+      <div class="cwGrid" dir="${B.dir}" style="--c:min(46px, calc((100vw - 40px) / ${B.cols} - 3px));grid-template-columns:repeat(${B.cols}, var(--c))">${grid}</div>
+      ${w.done ? '' : `<div class="bank" dir="${B.dir}">${w.bank.map(ch => `<button data-a="cwKey" data-v="${esc(ch)}">${esc(ch)}</button>`).join('')}<button data-a="cwBack" aria-label="امسح">⌫</button></div>
+      <button class="btn sm" data-a="cwHint">💡 اكشف حرفاً</button>`}
+      <div class="feedback" id="fb">${R.boards.length > 1 ? `<span class="muted small">الشبكة ${R.b + 1} من ${R.boards.length}</span>` : ''}</div></div>
+    <div class="cwClues">${clues}</div></div>`;
+}
+function cwSelect(i) { const B = P.run.boards[P.run.b]; B.sel = i; const w = B.words[i]; B.pos = 0; draw(); if (P.run.st.readAloud && w.it.q) K.speak(w.it.q); }
+function cwCell(key) {
+  const B = P.run.boards[P.run.b], cell = B.cells[key]; if (!cell) return;
+  const cand = cell.ws.filter(i => !B.words[i].done), cur = cand.includes(B.sel) && cand.length > 1 ? cand.find(i => i !== B.sel) : (cand.includes(B.sel) ? B.sel : cand[0] ?? cell.ws[0]);
+  B.sel = cur; const w = B.words[cur]; B.pos = Math.max(0, w.L.findIndex((_, k) => cwKey(w, k) === key)); draw();
+}
+function cwType(ch) {
+  const R = P.run, B = R.boards[R.b], w = B.words[B.sel]; if (w.done) return;
+  let k = B.pos;
+  // typing the whole word over a letter that is already there just moves on
+  if (B.cells[cwKey(w, k)].lock && cwNorm(ch) === cwNorm(B.cells[cwKey(w, k)].v)) { k++; B.pos = Math.min(k, w.L.length - 1); return draw(); }
+  while (k < w.L.length && B.cells[cwKey(w, k)].lock) k++; if (k >= w.L.length) return;
+  const c = B.cells[cwKey(w, k)]; c.v = ch; c.bad = false;
+  k++; B.pos = Math.min(k, w.L.length - 1);
+  if (w.L.every((_, j) => B.cells[cwKey(w, j)].v)) cwCheck(w); else draw();
+}
+function cwBack() { const B = P.run.boards[P.run.b], w = B.words[B.sel]; let k = B.pos;
+  if (!B.cells[cwKey(w, k)].v || B.cells[cwKey(w, k)].lock) k--; while (k >= 0 && B.cells[cwKey(w, k)].lock) k--; if (k < 0) return; B.cells[cwKey(w, k)].v = ''; B.pos = k; draw(); }
+function cwHint() { const R = P.run, B = R.boards[R.b], w = B.words[B.sel]; if (w.done) return;
+  const k = w.L.findIndex((ch, j) => { const c = B.cells[cwKey(w, j)]; return !c.lock && cwNorm(c.v) !== cwNorm(ch); }); if (k < 0) return;
+  const c = B.cells[cwKey(w, k)]; c.v = w.L[k]; c.lock = true; w.hint = true; if (w.L.every((_, j) => B.cells[cwKey(w, j)].v)) cwCheck(w); else draw(); }
+function cwCheck(w) {
+  const R = P.run, B = R.boards[R.b], keys = w.L.map((_, k) => cwKey(w, k));
+  const ok = keys.every((key, k) => cwNorm(B.cells[key].v) === cwNorm(w.L[k]));
+  if (ok) { w.done = true; keys.forEach((key, k) => { B.cells[key].lock = true; B.cells[key].v = w.L[k]; }); R.solved++; if (!w.hint && !w.miss) R.correct++; else R.wrong.push(w.it.a); K.tone(true);
+    // crossing words that got completed by this one
+    B.words.forEach(x => { if (!x.done && x.L.every((_, k) => B.cells[cwKey(x, k)].lock)) { x.done = true; R.solved++; if (!x.hint && !x.miss) R.correct++; } });
+    if (B.words.every(x => x.done)) { draw(); setTimeout(() => { if (R.b < R.boards.length - 1) { R.b++; draw(); } else { R.done = true; finish(R.act, { correct: R.correct, total: R.cwTotal, ms: Date.now() - R.t0, wrong: R.wrong }); } }, 900); return; }
+    const nx = B.words.findIndex((x, i) => !x.done && i > B.sel), first = B.words.findIndex(x => !x.done); B.sel = nx >= 0 ? nx : first; B.pos = 0; B.pos = 0; draw();
+  } else { w.miss = true; K.tone(false); keys.forEach(key => { if (!B.cells[key].lock) B.cells[key].bad = true; }); draw();
+    setTimeout(() => { keys.forEach(key => { const c = B.cells[key]; if (!c.lock) { c.v = ''; c.bad = false; } }); B.pos = 0; if (P.run === R) draw(); }, 700); }
+}
+document.addEventListener('keydown', e => {
+  const R = P.run; if (!R || R.done || R.t.id !== 'cross' || e.ctrlKey || e.metaKey || e.altKey || e.target.tagName === 'INPUT') return;
+  if (e.key === 'Backspace') { e.preventDefault(); return cwBack(); }
+  if (e.key === 'Tab' || e.key === 'Enter') { e.preventDefault(); const B = R.boards[R.b], n = B.words.length; for (let i = 1; i <= n; i++) { const j = (B.sel + (e.shiftKey ? -i : i) + n * 2) % n; if (!B.words[j].done) return cwSelect(j); } return; }
+  if (e.key.length === 1 && /\p{L}/u.test(e.key)) { e.preventDefault(); cwType(e.key); }
+});
 
 // ================= games =================
 function launchGame(act, items, st) {
@@ -216,19 +464,25 @@ document.addEventListener('submit', e => {
 document.addEventListener('click', e => {
   const el = e.target.closest('[data-a]'); if (!el) return; const a = el.dataset.a, R = P.run;
   switch (a) {
+    case 'cwSel': cwSelect(+el.dataset.w); break;
+    case 'cwCell': cwCell(el.dataset.k); break;
+    case 'cwKey': cwType(el.dataset.v); break;
+    case 'cwBack': cwBack(); break;
+    case 'cwHint': cwHint(); break;
+    case 'sdir': snakeTurn(el.dataset.v); break;
     case 'startAct': start(P.data.acts.find(x => x.id === el.dataset.id)); break;
     case 'door': P.door = el.dataset.v; render(); break;
     case 'toUnit': P.view = 'unit'; render(); scrollTo(0, 0); break;
-    case 'quit': try { speechSynthesis.cancel(); } catch (er) {} if (P.data.kind === 'unit') { P.run = null; P.view = 'unit'; render(); } else start(P.data.acts[0]); break;
+    case 'quit': snakeStop(); try { speechSynthesis.cancel(); } catch (er) {} if (P.data.kind === 'unit') { P.run = null; P.view = 'unit'; render(); } else start(P.data.acts[0]); break;
     case 'again': start(P.last.act); break;
     case 'lbAll': P.last.all = !P.last.all; drawEnd(); break;
-    case 'say': { const q = R.qs ? R.qs[R.i] : null; if (q) K.speak(R.t.id === 'flash' && q.flip ? q.it.a : q.it.q); break; }
+    case 'say': { const q = R.qs ? R.qs[R.i] : null; if (q) K.speak(q.say || (R.t.id === 'flash' && q.flip ? q.it.a : q.it.q)); break; }
     case 'pick': { if (R.locked) return; const q = R.qs[R.i], o = q.opts[+el.dataset.k], test = R.st.mode === 'test';
       if (!test) document.querySelectorAll('.opt').forEach((b, k) => { if (q.opts[k].ok) b.classList.add('ok'); else if (b === el) b.classList.add('no'); else b.classList.add('dim'); });
       else el.classList.add('sel'); answer(o.ok); break; }
     case 'tf': { if (R.locked) return; const q = R.qs[R.i], ok = (el.dataset.v === '1') === q.truth; el.classList.add(ok ? 'ok' : 'no'); answer(ok, q.truth ? q.it.a : q.it.a); break; }
     case 'tile': { const q = R.qs[R.i], x = q.tiles[+el.dataset.k]; if (x.used || R.locked) return; x.used = true; q.got.push(x); draw();
-      if (q.got.length === q.L.length) { const ok = q.got.map(g => g.c).join('').toLowerCase() === q.L.join('').toLowerCase(); if (ok || R.st.mode === 'test') answer(ok); else { R.tries++; if (R.tries === 1) R.wrong.push(q.it.q || q.it.a); K.tone(false); q.tiles.forEach(t => t.used = false); q.got = []; setTimeout(draw, 500); } } break; }
+      if (q.got.length === q.L.length) { const sp = q.sep || '', ok = K.norm(q.got.map(g => g.c).join(sp)) === K.norm(q.L.join(sp)); if (ok || R.st.mode === 'test') answer(ok); else { R.tries++; if (R.tries === 1) R.wrong.push(q.it.q || q.it.a); K.tone(false); q.tiles.forEach(t => t.used = false); q.got = []; setTimeout(draw, 500); } } break; }
     case 'undo': { const q = R.qs[R.i], x = q.got.pop(); if (x) x.used = false; draw(); break; }
     case 'flip': { const q = R.qs[R.i]; q.flip = !q.flip; draw(); if (q.flip && R.st.readAloud) K.speak(q.it.a); break; }
     case 'know': { if (el.dataset.v === '1') R.correct++; else R.wrong.push(R.qs[R.i].it.q); R.i++; if (R.i >= R.qs.length) end(); else draw(); break; }
