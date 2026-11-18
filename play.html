@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Kalima</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="k.css">
+<style>
+.stage{max-width:760px;margin:0 auto;padding:24px max(16px,env(safe-area-inset-right,0px)) 48px max(16px,env(safe-area-inset-left,0px));display:flex;flex-direction:column;gap:16px}
+.progress{height:8px;border-radius:99px;background:var(--line);overflow:hidden}.progress i{display:block;height:100%;background:var(--brand);border-radius:99px;transition:width .35s var(--ease)}
+.prompt{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:22px;display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center;box-shadow:var(--shadow)}
+.prompt .frame{width:min(260px,70vw);height:180px}
+.prompt .q{font-size:clamp(22px,4.6vw,32px);font-weight:600;line-height:1.3;overflow-wrap:anywhere}
+.say{width:48px;height:48px;border-radius:50%;border:0;background:var(--brand-soft);color:var(--brand);display:grid;place-items:center}
+.opts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.opt{min-height:72px;border:2px solid var(--line);background:var(--surface);border-radius:14px;padding:12px;font-size:19px;font-weight:600;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;overflow-wrap:anywhere;transition:transform .12s var(--ease),border-color .15s,background-color .15s}
+.opt:hover{border-color:#C9CDD8}.opt:active{transform:scale(.98)}
+.opt .frame{width:100%;height:110px}
+.opt.ok{border-color:var(--ok);background:var(--ok-soft)}.opt.no{border-color:var(--bad);background:var(--bad-soft);animation:shake .35s}
+.opt.dim{opacity:.5}
+@keyframes shake{25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+.feedback{min-height:26px;text-align:center;font-weight:600}
+.match{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px}.match .col{display:flex;flex-direction:column;gap:10px}
+.mi{min-height:64px;border:2px solid var(--line);background:var(--surface);border-radius:12px;padding:8px 10px;font-size:17px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:8px;overflow-wrap:anywhere}
+.mi .frame{width:72px;height:52px;flex:none}
+.mi.sel{border-color:var(--brand);background:var(--brand-soft)}.mi.gone{visibility:hidden}.mi.no{border-color:var(--bad);animation:shake .35s}
+.flash{perspective:1200px;border:0;background:none;padding:0;width:100%}
+.flash .face{min-height:300px;border-radius:20px;background:var(--surface);border:1px solid var(--line);box-shadow:var(--shadow);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:22px;font-size:clamp(24px,5vw,36px);font-weight:700}
+.flash .face.back{background:var(--brand-soft);border-color:var(--brand-line)}
+.flash .frame{width:min(240px,64vw);height:170px}
+.tiles{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+.tile{width:52px;height:56px;border-radius:12px;border:2px solid var(--line);background:var(--surface);font-size:24px;font-weight:700}
+.tile[disabled]{opacity:.25}
+.slots{display:flex;gap:6px;justify-content:center;flex-wrap:wrap}.slots span{width:44px;height:52px;border-bottom:3px solid var(--ink);display:grid;place-items:center;font-size:26px;font-weight:700}
+.score{font-size:clamp(64px,16vw,96px);font-weight:700;line-height:1;letter-spacing:-.04em;font-variant-numeric:tabular-nums}
+.lb li{display:flex;align-items:center;gap:12px;padding:10px 14px;border-bottom:1px solid var(--line-soft)}.lb li:last-child{border-bottom:0}
+.lb .rk{width:28px;height:28px;border-radius:50%;background:var(--ground);display:grid;place-items:center;font-weight:700;font-size:13px;flex:none}
+.lb li.me{background:var(--brand-soft)}
+.present .prompt .q{font-size:clamp(28px,5vw,48px)}.present .opt{font-size:26px;min-height:96px}
+</style>
+</head>
+<body>
+<header class="bar" id="bar"></header>
+<main id="main"></main>
+<script src="k-core.js"></script>
+<script>
+'use strict';
+const { esc, DB, tpl, KINDS } = K;
+const $ = s => document.querySelector(s);
+const ic = (d, s = 22) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
+const SPEAK = '<path d="M11 5 6 9H2v6h4l5 4V5Z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M19 5a10 10 0 0 1 0 14"/>';
+const frame = (src, cls = '') => src ? `<span class="frame ${cls}"><img src="${esc(src)}" alt="" onerror="this.parentNode.remove()"></span>` : '';
+const P = { data: null, name: '', view: 'load', run: null, door: 'all' };
+
+// ================= load =================
+(async function load() {
+  try {
+    const h = location.hash;
+    if (h.startsWith('#d=')) { P.data = await K.unpack(h.slice(3)); sessionStorage.setItem('kl2:session', JSON.stringify(P.data)); }
+    else P.data = JSON.parse(sessionStorage.getItem('kl2:session') || 'null');
+  } catch (e) { P.data = null; }
+  if (!P.data) { $('#bar').innerHTML = logo(); $('#main').innerHTML = `<div class="stage"><div class="panel empty"><h2>الرابط غير صالح</h2><span>اطلب من المعلم رابطاً جديداً.</span></div></div>`; return; }
+  document.title = P.data.title + ' · Kalima';
+  if (P.data.preview) P.name = P.data.present ? 'الصف' : 'معاينة';
+  else P.name = sessionStorage.getItem('kl2:name:' + P.data.code) || '';
+  if (P.data.present) document.body.classList.add('present');
+  const done = JSON.parse(sessionStorage.getItem('kl:gameDone') || 'null');
+  if (done && done.code === P.data.code) { sessionStorage.removeItem('kl:gameDone'); const a = P.data.acts.find(x => x.id === done.act); if (a) { finish(a, { correct: done.correct, total: done.total, ms: done.ms, wrong: [] }); return; } }
+  P.view = !P.name ? 'name' : P.data.kind === 'unit' ? 'unit' : 'run';
+  if (P.view === 'run') return start(P.data.acts[0]);
+  render();
+})();
+const logo = () => `<span class="logo"><i>K</i>Kalima</span>`;
+function bar(extra = '') { $('#bar').innerHTML = `${logo()}<span class="grow"></span>${extra}${P.name && !P.data.preview ? `<span class="muted">مرحباً، <b style="color:var(--ink);font-weight:600" dir="auto">${esc(P.name)}</b></span>` : P.data && P.data.preview ? '<span class="chip" style="background:var(--brand-soft);color:var(--brand)">معاينة · لا تُحفظ النتائج</span>' : ''}`; }
+
+// ================= screens =================
+const attemptsUsed = act => DB.results(P.data.code).filter(r => r.act === act.id && K.norm(r.name) === K.norm(P.name)).length;
+const bestOf = act => { const rs = DB.results(P.data.code).filter(r => r.act === act.id && K.norm(r.name) === K.norm(P.name)); return rs.length ? Math.max(...rs.map(r => r.score)) : null; };
+function locked(act) {
+  if (!P.data.settings || !P.data.settings.testLast || tpl(act.template).kind !== 'test') return false;
+  return P.data.acts.some(x => tpl(x.template).kind !== 'test' && bestOf(x) == null);
+}
+function render() {
+  bar();
+  if (P.view === 'name') {
+    $('#main').innerHTML = `<div class="stage" style="max-width:440px;padding-top:56px"><div style="text-align:center;display:flex;flex-direction:column;gap:6px"><span class="muted" dir="auto">${esc(P.data.title)}</span><h1 style="font-size:32px">ما اسمك؟</h1></div>
+      <form id="nameForm" style="display:flex;flex-direction:column;gap:12px"><input class="in" id="nameIn" dir="auto" autocomplete="off" placeholder="اكتب اسمك الكامل" style="font-size:20px;min-height:56px;text-align:center"><button class="btn pri lg">ابدأ</button></form></div>`;
+    setTimeout(() => $('#nameIn').focus(), 30); return;
+  }
+  if (P.view === 'unit') {
+    const acts = P.data.acts, doneN = acts.filter(a => bestOf(a) != null).length, next = acts.find(a => bestOf(a) == null && !locked(a));
+    const doors = ['practice', 'test', 'play'].map(k => [k, acts.filter(a => tpl(a.template).kind === k).length]);
+    const list = acts.map((a, i) => ({ a, i })).filter(({ a }) => P.door === 'all' || tpl(a.template).kind === P.door);
+    $('#main').innerHTML = `<div class="stage">
+      <div style="display:flex;flex-direction:column;gap:10px"><span class="muted">${esc(P.data.by || '')}</span><h1 style="font-size:32px" dir="auto">${esc(P.data.title)}</h1>
+        <div class="row" style="flex-wrap:nowrap"><div class="progress grow" role="progressbar" aria-valuenow="${doneN}" aria-valuemax="${acts.length}"><i style="width:${doneN / acts.length * 100}%;background:var(--ok)"></i></div><span class="small muted">${doneN} من ${acts.length}</span></div></div>
+      ${next ? `<section class="panel row" style="gap:16px;padding:20px;box-shadow:var(--shadow)">${thumbBig(next)}<div class="grow" style="min-width:180px"><span class="small muted">التالي · النشاط ${acts.indexOf(next) + 1}</span><div style="font-size:22px;font-weight:600">${tpl(next.template).name}</div></div>
+        <button class="btn pri lg" data-a="startAct" data-id="${next.id}">ابدأ</button></section>` : `<section class="panel" style="text-align:center;padding:24px"><h2>أحسنت! أنهيت كل أنشطة الوحدة.</h2></section>`}
+      <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px" role="tablist">
+        <button class="btn ${P.door === 'all' ? 'pri' : ''}" data-a="door" data-v="all">الكل · ${acts.length}</button>
+        ${doors.map(([k, n]) => `<button class="btn" data-a="door" data-v="${k}" style="${P.door === k ? `background:${KINDS[k].soft};border-color:${KINDS[k].ink};` : ''}color:${KINDS[k].ink}" ${n ? '' : 'disabled'}>${KINDS[k].door} · ${n}</button>`).join('')}</div>
+      <ol class="panel flush list" style="margin:0;padding:0;list-style:none">${list.map(({ a, i }) => { const b = bestOf(a), lk = locked(a), t = tpl(a.template);
+        return `<li class="li"><span style="width:32px;height:32px;border-radius:50%;display:grid;place-items:center;font-weight:700;font-size:14px;background:${b != null ? 'var(--ok)' : a === next ? 'var(--brand)' : 'var(--ground)'};color:${b != null || a === next ? '#fff' : 'var(--muted)'}">${b != null ? '✓' : i + 1}</span>
+          <div class="grow"><b style="font-weight:600">${t.name}</b><div class="small muted">${b != null ? 'أفضل علامة: ' + b : lk ? 'يُفتح بعد إنهاء التمارين' : t.desc}</div></div>
+          <span class="chip" style="background:${KINDS[t.kind].soft};color:${KINDS[t.kind].ink}">${KINDS[t.kind].door}</span>
+          <button class="btn sm" data-a="startAct" data-id="${a.id}" ${lk ? 'disabled' : ''}>${b != null ? 'مرة أخرى' : 'ابدأ'}</button></li>`; }).join('')}</ol></div>`;
+  }
+}
+const thumbBig = a => { const k = tpl(a.template).kind; return `<span style="width:60px;height:60px;border-radius:14px;background:${KINDS[k].soft};color:${KINDS[k].ink};display:grid;place-items:center;flex:none">${ic('<polygon points="8 5 19 12 8 19 8 5"/>', 26)}</span>`; };
+
+// ================= running an activity =================
+function start(act) {
+  const st = act.settings || K.settingsFor(act.template);
+  if (!P.data.preview && st.attempts > 0 && attemptsUsed(act) >= st.attempts) { bar(); $('#main').innerHTML = `<div class="stage"><div class="panel empty"><h2>انتهت محاولاتك لهذا النشاط</h2><span>عدد المحاولات المسموح: ${st.attempts}</span>${P.data.kind === 'unit' ? '<button class="btn pri" data-a="toUnit">رجوع للوحدة</button>' : ''}</div></div>`; return; }
+  const t = tpl(act.template), items = K.oriented(P.data.items, st.swap);
+  if (t.game) return launchGame(act, items, st);
+  const pool = st.shuffle ? K.shuffle(items) : items.slice();
+  const R = { act, st, t, items, i: 0, correct: 0, tries: 0, wrong: [], t0: Date.now(), locked: false };
+  if (t.id === 'mcq' || t.id === 'quiz') R.qs = pool.map(it => ({ it, opts: K.options(it, items) }));
+  if (t.id === 'tf') R.qs = pool.map(it => { const truth = Math.random() < .5, other = K.shuffle(items.filter(x => K.norm(x.a) !== K.norm(it.a)))[0]; return { it, shown: truth || !other ? it : other, truth: truth || !other }; });
+  if (t.id === 'spell') R.qs = pool.filter(it => { const n = [...it.a.replace(/\s+/g, '')].length; return n >= 2 && n <= 14; }).map(it => { const L = [...it.a.replace(/\s+/g, '')]; let sh = K.shuffle(L), g = 0; while (L.length > 1 && sh.join('') === L.join('') && g++ < 9) sh = K.shuffle(L); return { it, L, tiles: sh.map((c, k) => ({ c, k, used: false })), got: [] }; });
+  if (t.id === 'type') R.qs = pool.map(it => ({ it }));
+  if (t.id === 'flash') R.qs = pool.map(it => ({ it, flip: false }));
+  if (t.id === 'match') { R.rounds = []; for (let k = 0; k < pool.length; k += 5) R.rounds.push(pool.slice(k, k + 5)); if (R.rounds.length > 1 && R.rounds.at(-1).length < 2) R.rounds.at(-2).push(...R.rounds.pop()); R.r = 0; R.sel = null; R.gone = []; R.order = K.shuffle(R.rounds[0].map(x => x.id)); R.total = pool.length; R.missed = new Set(); }
+  if (!R.qs && t.id !== 'match' || (R.qs && !R.qs.length)) { bar(); $('#main').innerHTML = `<div class="stage"><div class="panel empty"><h2>لا يوجد محتوى مناسب لهذا القالب</h2></div></div>`; return; }
+  P.run = R; P.view = 'run'; draw(); autoSay();
+}
+function autoSay() { const R = P.run; if (!R || !R.st.readAloud || R.done) return; const q = R.qs && R.qs[R.i]; if (q && q.it && (R.t.id === 'mcq' || R.t.id === 'quiz' || R.t.id === 'tf')) setTimeout(() => K.speak(q.it.q), 200); }
+function head(R) {
+  const n = R.qs ? R.qs.length : R.total, at = R.qs ? R.i : R.gone.length + R.rounds.slice(0, R.r).reduce((s, r) => s + r.length, 0);
+  return `<div class="row" style="flex-wrap:nowrap"><button class="btn sm ghost" data-a="quit">${P.data.kind === 'unit' ? 'رجوع للوحدة' : 'خروج'}</button><div class="progress grow"><i style="width:${at / n * 100}%"></i></div><span class="small muted" style="font-variant-numeric:tabular-nums">${Math.min(at + 1, n)} / ${n}</span></div>`;
+}
+function promptHTML(it, extra = '') {
+  return `<div class="prompt">${frame(it.qi)}${it.q ? `<div class="q" dir="auto">${esc(it.q)}</div>` : ''}${extra}${it.q ? `<button class="say" data-a="say" aria-label="استمع">${ic(SPEAK)}</button>` : ''}</div>`;
+}
+function draw() {
+  const R = P.run; bar(); if (R.done) return;
+  const t = R.t.id; let body = '';
+  if (t === 'mcq' || t === 'quiz') { const q = R.qs[R.i]; body = promptHTML(q.it) + `<div class="opts">${q.opts.map((o, k) => `<button class="opt" data-a="pick" data-k="${k}">${frame(o.i)}${o.t ? `<span dir="auto">${esc(o.t)}</span>` : ''}</button>`).join('')}</div><div class="feedback" id="fb"></div>`; }
+  if (t === 'tf') { const q = R.qs[R.i]; body = promptHTML(q.it, `<div style="font-size:15px" class="muted">الجواب:</div><div class="q" dir="auto" style="color:var(--brand)">${frame(q.shown.ai)}${esc(q.shown.a)}</div>`) +
+    `<div class="opts"><button class="opt" data-a="tf" data-v="1" style="color:var(--ok-ink)">صح ✓</button><button class="opt" data-a="tf" data-v="0" style="color:var(--bad)">خطأ ✗</button></div><div class="feedback" id="fb"></div>`; }
+  if (t === 'type') { const q = R.qs[R.i]; body = promptHTML(q.it) + `<form id="typeForm" class="row" style="justify-content:center"><input class="in" id="typeIn" dir="auto" autocomplete="off" spellcheck="false" placeholder="اكتب الجواب" style="max-width:340px;font-size:22px;text-align:center;min-height:56px"><button class="btn pri lg">تحقق</button></form><div class="feedback" id="fb"></div>`; }
+  if (t === 'spell') { const q = R.qs[R.i]; body = promptHTML(q.it) + `<div class="slots" dir="${K.dirOf(q.it.a)}">${q.L.map((c, k) => `<span>${esc(q.got[k] ? q.got[k].c : '')}</span>`).join('')}</div>
+    <div class="tiles" dir="${K.dirOf(q.it.a)}">${q.tiles.map((x, k) => `<button class="tile" data-a="tile" data-k="${k}" ${x.used || R.locked ? 'disabled' : ''}>${esc(x.c)}</button>`).join('')}</div><div class="row" style="justify-content:center"><button class="btn sm" data-a="undo" ${q.got.length && !R.locked ? '' : 'disabled'}>تراجع</button></div><div class="feedback" id="fb"></div>`; }
+  if (t === 'flash') { const q = R.qs[R.i]; body = `<button class="flash" data-a="flip"><div class="face ${q.flip ? 'back' : ''}">${q.flip ? `${frame(q.it.ai)}<span dir="auto">${esc(q.it.a)}</span>` : `${frame(q.it.qi)}<span dir="auto">${esc(q.it.q)}</span>`}</div></button>
+    <p class="small muted" style="text-align:center;margin:0">اضغط على البطاقة لقلبها</p><div class="row" style="justify-content:center"><button class="say" data-a="say" aria-label="استمع">${ic(SPEAK)}</button></div>
+    <div class="opts"><button class="opt" data-a="know" data-v="0" style="color:var(--bad);font-size:17px">لم أعرفها</button><button class="opt" data-a="know" data-v="1" style="color:var(--ok-ink);font-size:17px">عرفتها</button></div>`; }
+  if (t === 'match') { const round = R.rounds[R.r]; body = `<p class="muted" style="text-align:center;margin:0">اختر عنصراً من كل عمود ليتطابقا</p><div class="match"><div class="col">${round.map(it => `<button class="mi ${R.gone.includes(it.id) ? 'gone' : ''} ${R.sel && R.sel.s === 'q' && R.sel.id === it.id ? 'sel' : ''}" data-a="mt" data-s="q" data-id="${it.id}">${frame(it.qi)}<span dir="auto">${esc(it.q)}</span></button>`).join('')}</div>
+    <div class="col">${R.order.map(id => { const it = round.find(x => x.id === id); return `<button class="mi ${R.gone.includes(id) ? 'gone' : ''} ${R.sel && R.sel.s === 'a' && R.sel.id === id ? 'sel' : ''}" data-a="mt" data-s="a" data-id="${id}">${frame(it.ai)}<span dir="auto">${esc(it.a)}</span></button>`; }).join('')}</div></div>`; }
+  $('#main').innerHTML = `<div class="stage">${head(R)}${body}</div>`;
+  const ti = $('#typeIn'); if (ti) ti.focus();
+}
+// first try counts; practice shows the right answer at once, test moves on without feedback
+function answer(ok, revealText) {
+  const R = P.run, q = R.qs[R.i]; if (R.locked) return;
+  const test = R.st.mode === 'test';
+  if (ok) { if (!R.tries) R.correct++; K.tone(true); }
+  else { R.tries++; K.tone(false); if (R.tries === 1) R.wrong.push(q.it.q || q.it.a); }
+  const fb = $('#fb');
+  if (test || ok || R.t.id === 'mcq' || R.t.id === 'quiz' || R.t.id === 'tf' || R.t.id === 'type') {
+    R.locked = true;
+    if (fb && !test) fb.innerHTML = ok ? '<span style="color:var(--ok-ink)">صحيح!</span>' : `<span style="color:var(--bad)">الجواب الصحيح: <span dir="auto">${esc(revealText || q.it.a)}</span></span>`;
+    setTimeout(next, test ? 350 : ok ? 800 : 1700);
+  }
+}
+function next() { const R = P.run; R.i++; R.tries = 0; R.locked = false; if (R.i >= R.qs.length) return end(); draw(); autoSay(); }
+function end() { const R = P.run; R.done = true; const total = R.qs ? R.qs.length : R.total; finish(R.act, { correct: R.correct, total, ms: Date.now() - R.t0, wrong: R.wrong }); }
+
+// ================= games =================
+function launchGame(act, items, st) {
+  const words = items.map(it => ({ term: it.a, meaning: it.q, img: it.qi, audio: '' }));
+  const lang = it => K.scriptOf(it);
+  const play = { set: { title: P.data.title, termLang: lang(words[0] ? words[0].term : ''), meanLang: lang(words[0] ? words[0].meaning : ''), words }, name: P.name, ret: 'play.html', code: P.data.code, act: act.id, t0: Date.now() };
+  try { sessionStorage.setItem('kl:play', JSON.stringify(play)); localStorage.setItem('kl:play', JSON.stringify(play)); } catch (e) {}
+  location.href = tpl(act.template).game;
+}
+
+// ================= end screen: score, leaderboard =================
+function finish(act, r) {
+  const st = act.settings || K.settingsFor(act.template), test = st.mode === 'test';
+  const score = r.total ? Math.round(r.correct / r.total * 100) : 0;
+  const rec = { name: P.name, act: act.id, score, correct: r.correct, total: r.total, ms: r.ms, at: Date.now(), wrong: r.wrong || [] };
+  if (!P.data.preview) DB.addResult(P.data.code, rec);
+  P.view = 'end'; P.run = null; P.last = { act, rec, st, all: false }; drawEnd();
+}
+function drawEnd() {
+  const { act, rec, st, all } = P.last, test = st.mode === 'test', lbOn = st.leaderboard && !test && !P.data.preview;
+  bar();
+  const board = lbOn ? K.board(P.data.code, act.id) : [], me = board.findIndex(b => K.norm(b.name) === K.norm(P.name));
+  const shown = all ? board : board.slice(0, st.lbCount || 10);
+  const msg = rec.score >= 90 ? 'ممتاز!' : rec.score >= 70 ? 'أحسنت!' : rec.score >= 50 ? 'جيد، تستطيع أكثر' : 'حاول مرة أخرى';
+  const canAgain = !(st.attempts > 0 && attemptsUsed(act) >= st.attempts) || P.data.preview;
+  $('#main').innerHTML = `<div class="stage">
+    <section class="prompt" style="gap:10px;padding:30px 22px">
+      ${st.showScore ? `<span class="muted">علامتك</span><span class="score" style="color:${rec.score >= 60 ? 'var(--ok-ink)' : 'var(--bad)'}">${rec.score}<span style="font-size:.38em;color:var(--muted)"> / 100</span></span>
+        <div style="font-size:22px;font-weight:600">${msg}</div><div class="row muted" style="justify-content:center;gap:18px"><span>✓ ${rec.correct} من ${rec.total}</span><span>⏱ ${Math.round(rec.ms / 1000)} ثانية</span></div>`
+      : `<div style="font-size:24px;font-weight:600">أنهيت النشاط</div><span class="muted">${test ? 'علامتك وصلت إلى المعلم.' : ''}</span>`}
+    </section>
+    ${lbOn && board.length ? `<section class="panel flush"><div class="row" style="padding:14px 16px;border-bottom:1px solid var(--line)"><h2 class="grow" style="font-size:17px">${all ? 'كل النتائج' : 'أول ' + (st.lbCount || 10)}</h2>${board.length > (st.lbCount || 10) ? `<button class="btn sm" data-a="lbAll">${all ? 'أول ' + (st.lbCount || 10) : 'كل النتائج · ' + board.length}</button>` : ''}</div>
+      <ol class="lb" style="margin:0;padding:0;list-style:none">${shown.map((b, i) => `<li class="${i === me ? 'me' : ''}"><span class="rk" style="${i < 3 ? 'background:#FFE9A8' : ''}">${i + 1}</span><b class="grow" style="font-weight:600" dir="auto">${esc(b.name)}</b><span class="muted small" style="font-variant-numeric:tabular-nums">${Math.round(b.ms / 1000)} ث</span><b style="width:44px;text-align:left;font-variant-numeric:tabular-nums">${b.score}</b></li>`).join('')}
+        ${!all && me >= (st.lbCount || 10) ? `<li class="me"><span class="rk">${me + 1}</span><b class="grow" dir="auto">${esc(board[me].name)}</b><b style="width:44px;text-align:left">${board[me].score}</b></li>` : ''}</ol>
+      <p class="small muted" style="margin:0;padding:10px 16px">النتائج لطلاب هذا الرابط فقط.</p></section>` : ''}
+    ${st.showAnswers && rec.wrong.length && !test ? `<section class="panel"><h2 style="font-size:17px;margin-bottom:8px">راجع هذه</h2><div class="pills">${rec.wrong.map(w => `<span class="chip" style="background:var(--bad-soft);color:var(--bad);font-size:14px;padding:4px 12px" dir="auto">${esc(w)}</span>`).join('')}</div></section>` : ''}
+    <div class="row" style="justify-content:center">${canAgain ? '<button class="btn lg" data-a="again">مرة أخرى</button>' : ''}${P.data.kind === 'unit' ? '<button class="btn pri lg" data-a="toUnit">رجوع للوحدة</button>' : ''}</div></div>`;
+  if (st.showScore) K.tone(rec.score >= 60);
+}
+
+// ================= events =================
+document.addEventListener('submit', e => {
+  e.preventDefault();
+  if (e.target.id === 'nameForm') { const n = $('#nameIn').value.trim(); if (n.length < 2) { $('#nameIn').focus(); return; } P.name = n; sessionStorage.setItem('kl2:name:' + P.data.code, n); if (P.data.kind === 'unit') { P.view = 'unit'; render(); } else start(P.data.acts[0]); }
+  if (e.target.id === 'typeForm') { const R = P.run, q = R.qs[R.i], v = $('#typeIn').value; if (!v.trim()) return; answer(K.norm(v) === K.norm(q.it.a)); }
+});
+document.addEventListener('click', e => {
+  const el = e.target.closest('[data-a]'); if (!el) return; const a = el.dataset.a, R = P.run;
+  switch (a) {
+    case 'startAct': start(P.data.acts.find(x => x.id === el.dataset.id)); break;
+    case 'door': P.door = el.dataset.v; render(); break;
+    case 'toUnit': P.view = 'unit'; render(); scrollTo(0, 0); break;
+    case 'quit': try { speechSynthesis.cancel(); } catch (er) {} if (P.data.kind === 'unit') { P.run = null; P.view = 'unit'; render(); } else start(P.data.acts[0]); break;
+    case 'again': start(P.last.act); break;
+    case 'lbAll': P.last.all = !P.last.all; drawEnd(); break;
+    case 'say': { const q = R.qs ? R.qs[R.i] : null; if (q) K.speak(R.t.id === 'flash' && q.flip ? q.it.a : q.it.q); break; }
+    case 'pick': { if (R.locked) return; const q = R.qs[R.i], o = q.opts[+el.dataset.k], test = R.st.mode === 'test';
+      if (!test) document.querySelectorAll('.opt').forEach((b, k) => { if (q.opts[k].ok) b.classList.add('ok'); else if (b === el) b.classList.add('no'); else b.classList.add('dim'); });
+      else el.classList.add('sel'); answer(o.ok); break; }
+    case 'tf': { if (R.locked) return; const q = R.qs[R.i], ok = (el.dataset.v === '1') === q.truth; el.classList.add(ok ? 'ok' : 'no'); answer(ok, q.truth ? q.it.a : q.it.a); break; }
+    case 'tile': { const q = R.qs[R.i], x = q.tiles[+el.dataset.k]; if (x.used || R.locked) return; x.used = true; q.got.push(x); draw();
+      if (q.got.length === q.L.length) { const ok = q.got.map(g => g.c).join('').toLowerCase() === q.L.join('').toLowerCase(); if (ok || R.st.mode === 'test') answer(ok); else { R.tries++; if (R.tries === 1) R.wrong.push(q.it.q || q.it.a); K.tone(false); q.tiles.forEach(t => t.used = false); q.got = []; setTimeout(draw, 500); } } break; }
+    case 'undo': { const q = R.qs[R.i], x = q.got.pop(); if (x) x.used = false; draw(); break; }
+    case 'flip': { const q = R.qs[R.i]; q.flip = !q.flip; draw(); if (q.flip && R.st.readAloud) K.speak(q.it.a); break; }
+    case 'know': { if (el.dataset.v === '1') R.correct++; else R.wrong.push(R.qs[R.i].it.q); R.i++; if (R.i >= R.qs.length) end(); else draw(); break; }
+    case 'mt': { const s = el.dataset.s, id = el.dataset.id, round = R.rounds[R.r];
+      if (!R.sel || R.sel.s === s) { R.sel = { s, id }; if (s === 'q' && R.st.readAloud) K.speak((round.find(x => x.id === id) || {}).q); draw(); return; }
+      if (R.sel.id === id) { K.tone(true); R.gone.push(id); R.sel = null; if (!R.missed.has(id)) R.correct++;
+        if (R.gone.length === round.length) { R.r++; if (R.r >= R.rounds.length) return end(); R.gone = []; R.order = K.shuffle(R.rounds[R.r].map(x => x.id)); } draw(); }
+      else { K.tone(false); [R.sel.id, id].forEach(x => { if (!R.missed.has(x)) { R.missed.add(x); const it = round.find(y => y.id === x); if (it) R.wrong.push(it.q); } }); R.sel = null; el.classList.add('no'); setTimeout(draw, 380); }
+      break; }
+  }
+});
+</script>
+</body>
+</html>

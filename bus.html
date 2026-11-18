@@ -591,7 +591,17 @@ function kModes(btnClass) {
     .map(k => `<button class="${btnClass}" aria-pressed="${KMODE === k}" data-act="kmode" data-id="${k}"><b>${KTX[k]}</b></button>`).join('');
 }
 function kTitle() { return String(KSET.title || '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
-const kBack = `<a class="kback" href="index.html#games">${KTX.back}</a>`;
+const kRet = (KPLAY && KPLAY.ret) || 'index.html#games';
+const kBack = `<a class="kback" href="${kRet}">${KPLAY && KPLAY.ret ? 'رجوع' : KTX.back}</a>`;
+// report the result to the Kalima player: first-try correct out of total, shown there as a score out of 100
+function kReport(correct, total) {
+  if (!KPLAY || !KPLAY.code) return;
+  try { sessionStorage.setItem('kl:gameDone', JSON.stringify({ code: KPLAY.code, act: KPLAY.act, correct: Math.max(0, correct), total: Math.max(1, total), ms: Date.now() - (KPLAY.t0 || Date.now()) })); } catch (e) {}
+  if (document.getElementById('kdone')) return;
+  const a = document.createElement('a'); a.id = 'kdone'; a.href = kRet; a.textContent = 'عرض علامتي ←';
+  a.style.cssText = 'position:fixed;z-index:9999;bottom:calc(18px + env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%);background:#4C3DD6;color:#fff;font:700 18px Rubik,system-ui,sans-serif;padding:14px 26px;border-radius:14px;text-decoration:none;box-shadow:0 8px 24px rgba(0,0,0,.25)';
+  document.body.appendChild(a);
+}
 const kFew = KW.length < 2 ? `<p class="ar how" style="color:#B91C1C">${KTX.few}</p>` : '';
 document.addEventListener('click', e => {
   const t = e.target.closest('[data-act="kmode"]'); if (!t) return;
@@ -609,6 +619,7 @@ showMenu = function () {
     <p class="ar how">${KTX.bus}</p>${kFew}<div class="modes">${kModes('mbtn')}</div>${KW.length >= 2 ? '<button class="play" data-act="play" aria-label="Play"></button>' : ''}${kBack}`;
   $('#menu').hidden = false;
 };
+const _kWin = showWin; showWin = function () { _kWin(); kReport(S.cars.length, S.cars.length + S.mistakes); };
 showMenu();
 </script>
 </body>
