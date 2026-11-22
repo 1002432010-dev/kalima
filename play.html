@@ -94,6 +94,7 @@
 <header class="bar" id="bar"></header>
 <main id="main"></main>
 <script src="k-core.js"></script>
+<script src="sounds.js"></script>
 <script>
 'use strict';
 const { esc, DB, tpl, KINDS } = K;
@@ -183,7 +184,7 @@ function start(act) {
   if (!R.qs && t.id !== 'match' || (R.qs && !R.qs.length)) { bar(); $('#main').innerHTML = `<div class="stage"><div class="panel empty"><h2>لا يوجد محتوى مناسب لهذا القالب</h2></div></div>`; return; }
   P.run = R; P.view = 'run'; draw(); autoSay();
 }
-function autoSay() { const R = P.run; if (!R || !R.st.readAloud || R.done) return; const q = R.qs && R.qs[R.i]; if (q && q.it && (R.t.id === 'mcq' || R.t.id === 'quiz' || R.t.id === 'tf' || R.t.id === 'snake' || R.t.id === 'pop')) setTimeout(() => K.speak(sayOf(q.it)), 200); }
+function autoSay() { const R = P.run; if (!R || !R.st.readAloud || R.done) return; const q = R.qs && R.qs[R.i]; if (q && q.it && (R.t.id === 'mcq' || R.t.id === 'quiz' || R.t.id === 'tf' || R.t.id === 'snake' || R.t.id === 'pop')) setTimeout(() => sayIt(q.it), 200); }
 function head(R) {
   if (R.t.id === 'cross') return `<div class="row" style="flex-wrap:nowrap"><button class="btn sm ghost" data-a="quit">${P.data.kind === 'unit' ? 'رجوع للوحدة' : 'خروج'}</button><div class="progress grow"><i style="width:${R.solved / R.cwTotal * 100}%"></i></div><span class="small muted" style="font-variant-numeric:tabular-nums">${R.solved} / ${R.cwTotal}</span></div>`;
   const n = R.qs ? R.qs.length : R.total, at = R.qs ? R.i : R.gone.length + R.rounds.slice(0, R.r).reduce((s, r) => s + r.length, 0);
@@ -191,6 +192,13 @@ function head(R) {
 }
 // what is read aloud: the item's own spoken text when the teacher gave one, else its question
 const sayOf = it => (it && (it.s || it.q)) || '';
+// play the item: its recorded sound when it has one (letter sounds), otherwise the device voice
+let sndNow = null;
+function sayIt(it) {
+  const k = it && it.au && String(it.au).replace(/^snd:/, ''), src = k && window.K_SOUNDS && window.K_SOUNDS[k];
+  if (src) { try { speechSynthesis.cancel(); } catch (e) {} try { if (sndNow) sndNow.pause(); sndNow = new Audio(src); sndNow.play().catch(() => {}); } catch (e) {} return; }
+  K.speak(sayOf(it));
+}
 const listenOnly = () => !!(P.run && P.run.st && P.run.st.listen);
 function promptHTML(it, extra = '') {
   if (listenOnly()) return `<div class="prompt">${frame(it.qi)}<span class="muted">استمع وأجب</span>${extra}<button class="say" data-a="say" aria-label="استمع" style="width:72px;height:72px">${ic(SPEAK, 32)}</button></div>`;
@@ -215,7 +223,7 @@ function draw() {
   if (t === 'pop') { const q = R.qs[R.i]; body = `<div class="snk"><div class="prompt">${frame(q.it.qi)}${q.it.q && !listenOnly() ? `<div class="q" dir="auto">${esc(q.it.q)}</div>` : ''}${q.it.q ? `<button class="say" data-a="say" aria-label="استمع">${ic(SPEAK)}</button>` : ''}</div>
     <p class="muted small" style="text-align:center;margin:0" id="bbHint">صوّب الكرة نحو الكلمة الصحيحة لتُسقطها</p><canvas id="bbCv" style="background:#1E2A4A;box-shadow:none;cursor:crosshair"></canvas><div class="feedback" id="fb"></div></div>`; }
   if (t === 'wall') { const q = R.qs[R.i]; wallPrep(R); const listen = R.wmode === 'word' || listenOnly();
-    body = `<div class="prompt" style="padding:12px 16px;gap:8px;flex-direction:row;justify-content:center;flex-wrap:wrap">${listen ? '<span style="font-size:20px;font-weight:600">استمع، ثم اهدم الكلمة</span>' : `<div class="q" dir="auto" style="font-size:clamp(22px,4vw,30px)">${esc(q.it.q)}</div>`}<button class="say" data-a="say" aria-label="استمع" style="${listen ? 'width:58px;height:58px' : ''}">${ic(SPEAK, listen ? 28 : 22)}</button></div>
+    body = `<div class="prompt" style="padding:12px 16px;gap:8px;flex-direction:row;justify-content:center;flex-wrap:wrap">${listen ? '<span style="font-size:20px;font-weight:600">استمع، ثم اهدم الطوبة الصحيحة</span>' : `<div class="q" dir="auto" style="font-size:clamp(22px,4vw,30px)">${esc(q.it.q)}</div>`}<button class="say" data-a="say" aria-label="استمع" style="${listen ? 'width:58px;height:58px' : ''}">${ic(SPEAK, listen ? 28 : 22)}</button></div>
     <div class="wscene" id="wscene"><span class="cloud" style="left:8%;top:10px"></span><span class="cloud" style="left:58%;top:30px;width:50px"></span><div class="jib"></div><div class="mast"></div>
       <div class="bld"><div class="bgrid">${R.wall.map((b, k) => `<button class="brk ${b.gone ? 'gone' : ''}" data-a="wbrk" data-k="${k}" ${b.gone ? 'disabled' : ''} aria-label="${esc(b.f.t || 'صورة')}">${b.gone ? '' : b.f.i ? frame(b.f.i) : `<span dir="auto" class="${[...b.f.t].length > 8 ? 'l' : [...b.f.t].length > 6 ? 'm' : ''}">${esc(b.f.t)}</span>`}</button>`).join('')}</div><div class="bbase"><i></i></div></div>
       <div class="cable" id="wcable"></div><div class="wball" id="wball"></div></div><div class="feedback" id="fb"></div>`; }
@@ -411,7 +419,7 @@ function cwHTML(R) {
       <div class="feedback" id="fb">${R.boards.length > 1 ? `<span class="muted small">الشبكة ${R.b + 1} من ${R.boards.length}</span>` : ''}</div></div>
     <div class="cwClues">${clues}</div></div>`;
 }
-function cwSelect(i) { const B = P.run.boards[P.run.b]; B.sel = i; const w = B.words[i]; B.pos = 0; draw(); if (P.run.st.readAloud && sayOf(w.it)) K.speak(sayOf(w.it)); }
+function cwSelect(i) { const B = P.run.boards[P.run.b]; B.sel = i; const w = B.words[i]; B.pos = 0; draw(); if (P.run.st.readAloud && sayOf(w.it)) sayIt(w.it); }
 function cwCell(key) {
   const B = P.run.boards[P.run.b], cell = B.cells[key]; if (!cell) return;
   const cand = cell.ws.filter(i => !B.words[i].done), cur = cand.includes(B.sel) && cand.length > 1 ? cand.find(i => i !== B.sel) : (cand.includes(B.sel) ? B.sel : cand[0] ?? cell.ws[0]);
@@ -551,7 +559,7 @@ function wallBallAt(x, y, anim) {
   cab.style.left = px + 'px'; cab.style.top = py + 'px'; cab.style.height = len + 'px'; cab.style.transform = `rotate(${-ang}rad)`;
 }
 function wallRest() { const sc = $('#wscene'); if (sc) wallBallAt(sc.clientWidth - (sc.clientWidth < 500 ? 22 : 40), sc.clientHeight * .52, false); }
-function wallReady() { wallRest(); const R = P.run; if (R && R.st.readAloud !== false || R.wmode === 'word' || R.st.listen) setTimeout(() => K.speak(sayOf(R.qs[R.i].it)), 250); }
+function wallReady() { wallRest(); const R = P.run; if (R && R.st.readAloud !== false || R.wmode === 'word' || R.st.listen) setTimeout(() => sayIt(R.qs[R.i].it), 250); }
 function wallHit(k, el) {
   const R = P.run; if (!R || R.locked || R.busy) return; const b = R.wall[k]; if (!b || b.gone) return;
   const sc = $('#wscene').getBoundingClientRect(), r = el.getBoundingClientRect(), x = r.left - sc.left + r.width / 2, y = r.top - sc.top + r.height / 2;
@@ -627,7 +635,7 @@ document.addEventListener('click', e => {
     case 'quit': snakeStop(); try { speechSynthesis.cancel(); } catch (er) {} if (P.data.kind === 'unit') { P.run = null; P.view = 'unit'; render(); } else start(P.data.acts[0]); break;
     case 'again': start(P.last.act); break;
     case 'lbAll': P.last.all = !P.last.all; drawEnd(); break;
-    case 'say': { const q = R.qs ? R.qs[R.i] : null; if (q) K.speak(q.say || (R.t.id === 'flash' && q.flip ? q.it.a : sayOf(q.it))); break; }
+    case 'say': { const q = R.qs ? R.qs[R.i] : null; if (q) { if (q.say) K.speak(q.say); else if (R.t.id === 'flash' && q.flip) K.speak(q.it.a); else sayIt(q.it); } break; }
     case 'pick': { if (R.locked) return; const q = R.qs[R.i], o = q.opts[+el.dataset.k], test = R.st.mode === 'test';
       if (!test) document.querySelectorAll('.opt').forEach((b, k) => { if (q.opts[k].ok) b.classList.add('ok'); else if (b === el) b.classList.add('no'); else b.classList.add('dim'); });
       else el.classList.add('sel'); answer(o.ok); break; }

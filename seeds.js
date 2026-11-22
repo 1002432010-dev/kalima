@@ -23,3 +23,28 @@ window.K_SEEDS={"acts": [{"id": "seed-mcq", "type": "act", "title": "Animals –
   });
   S.units = [...units, ...S.units];
 })();
+
+// Letter-sound units without pictures: the student hears the sound of a letter and picks the letter.
+// First 12 letters in the booklet's order. The sounds live in sounds.js (K_SOUNDS), referenced as "snd:<letter>".
+(function () {
+  const S = window.K_SEEDS, groups = [['a', 'c', 't', 'n'], ['p', 'i', 'r', 's'], ['d', 'g', 'h', 'o']], all = groups.flat();
+  const L = { listen: true, readAloud: true };
+  const acts = n => [
+    { id: n + 'a0', template: 'mcq', settings: L },
+    { id: n + 'a1', template: 'wall', settings: Object.assign({ bricks: 'meaning' }, L) },
+    { id: n + 'a2', template: 'pop', settings: L },
+    { id: n + 'a3', template: 'snake', settings: L },
+    { id: n + 'a4', template: 'quiz', settings: L }
+  ];
+  const item = (id, l, wrong) => ({ id, q: l, s: '', au: 'snd:' + l, qi: '', a: l, ai: '', w: wrong });
+  const units = groups.map((g, n) => ({
+    id: 'seed-ph' + n, type: 'unit', title: `صوت الحرف – الوحدة ${n + 1} (${g.join(' ')})`, subject: 'إنجليزي', grade: '3', by: 'Kalima',
+    order: true, testLast: true, settings: {}, content: 'questions', acts: acts('ph' + n),
+    // each letter three times, so every activity has 12 sounds to listen to
+    items: [0, 1, 2].flatMap(r => g.map(l => item(`ph${n}i${r}${l}`, l, g.filter(x => x !== l))))
+  }));
+  units.push({ id: 'seed-ph3', type: 'unit', title: 'صوت الحرف – مراجعة أول 12 حرفاً', subject: 'إنجليزي', grade: '3', by: 'Kalima',
+    order: true, testLast: true, settings: {}, content: 'questions', acts: acts('ph3'),
+    items: [0, 1].flatMap(r => all.map(l => item(`ph3i${r}${l}`, l, ['', '', '']))) });
+  S.units = [...units, ...S.units];
+})();
