@@ -34,6 +34,8 @@
     { id: 'type', kind: 'practice', name: 'اكتب الجواب', desc: 'يكتب الطالب الجواب بنفسه.', needs: 'pairs' },
     { id: 'snake', kind: 'play', name: 'الأفعى', desc: 'السؤال في الأعلى، والأفعى تأكل الجواب الصحيح وتكبر.', needs: 'pairs' },
     { id: 'cross', kind: 'play', name: 'كلمات متقاطعة', desc: 'لكل كلمة صورة أو تلميح، والطالب يملأ الشبكة.', needs: 'pairs' },
+    { id: 'pop', kind: 'play', name: 'فقاعات الكلمات', desc: 'السؤال في الأعلى، والطالب يقذف الكرة ليُسقط فقاعات الكلمة الصحيحة.', needs: 'pairs' },
+    { id: 'wall', kind: 'play', name: 'هدم المبنى', desc: 'تُقرأ الكلمة، والطالب يجد طوبتها: الكلمة نفسها أو معناها أو صورتها، والكرة تهدمها.', needs: 'pairs' },
     { id: 'bus', kind: 'play', name: 'باص الكلمات', desc: 'أخرج الحافلة التي عليها الجواب.', needs: 'pairs', game: 'bus.html' },
     { id: 'kicks', kind: 'play', name: 'ركلات الكلمات', desc: 'سدّد نحو الجواب الصحيح من أربعة.', needs: 'pairs', game: 'kicks.html' },
     { id: 'race', kind: 'play', name: 'سباق الكلمات', desc: 'قُد المركبة عبر بوابة الجواب.', needs: 'pairs', game: 'race.html' },

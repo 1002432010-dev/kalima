@@ -49,6 +49,25 @@
 .bank{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;max-width:560px}
 .bank button{min-width:48px;height:52px;border-radius:12px;border:2px solid var(--line);background:#fff;font-size:22px;font-weight:700;text-transform:uppercase;padding:0 10px}
 .bank button:active{background:var(--brand-soft);border-color:var(--brand)}
+.wscene{position:relative;direction:ltr;border-radius:18px;overflow:hidden;background:linear-gradient(#6CCBF5,#C9ECFC 70%,#9AA3AE 70%,#8C95A1);padding:18px 92px 0 14px;user-select:none}
+.wscene .cloud{position:absolute;width:70px;height:22px;border-radius:20px;background:#fff;opacity:.85}
+.bld{position:relative;background:#E8743B;border:5px solid #F3D9A8;border-bottom:0;border-radius:6px 6px 0 0;padding:10px 10px 0;box-shadow:0 6px 0 #C85A28 inset}
+.bld::before{content:'';position:absolute;left:-14px;right:-14px;top:-16px;height:14px;background:#F3D9A8;border-radius:6px}
+.bgrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border:3px solid #B9531F;background:#B9531F;gap:3px}
+.brk{position:relative;aspect-ratio:1.3;border:0;padding:4px;background:#EE7F45;background-image:radial-gradient(circle at 20% 30%,rgba(255,255,255,.12) 2px,transparent 3px),radial-gradient(circle at 70% 60%,rgba(0,0,0,.08) 2px,transparent 3px);background-size:18px 18px;color:#1D2133;font-weight:700;font-size:clamp(14px,3.2vw,24px);display:grid;place-items:center;overflow:hidden;cursor:pointer}
+.brk span{overflow-wrap:normal;word-break:keep-all;line-height:1.15}.brk span.m{font-size:.8em}.brk span.l{font-size:.64em}
+@media (max-width:600px){.wscene{padding:14px 52px 0 8px}.mast{right:14px;width:14px}.jib{right:8px;width:34px}.bld{padding:6px 6px 0}.brk{font-size:clamp(13px,4.2vw,20px);padding:2px}.wball{width:38px;height:38px;margin:-19px 0 0 -19px}}
+.brk .frame{width:80%;height:80%;background:transparent}
+.brk:hover{filter:brightness(1.07)}
+.brk.gone{cursor:default;background:linear-gradient(#5DB6EA,#A9DCF7);box-shadow:inset 0 0 0 7px #A8481A,inset 0 0 0 9px #7A3412}
+.brk.gone::after{content:'';position:absolute;left:30%;right:30%;top:30%;bottom:22%;background:linear-gradient(90deg,transparent 46%,#2F6F95 46% 54%,transparent 54%),#4E9CC9;border:3px solid #2F6F95;opacity:.8}
+.brk.no{animation:shake .35s;background:#F4A07A}
+.bbase{height:34px;background:#E8743B;border:5px solid #F3D9A8;border-top:0;margin:0 -10px;display:flex;justify-content:center;align-items:flex-end}
+.bbase i{width:44px;height:28px;background:#B3261E;border:3px solid #7A1712;border-bottom:0}
+.mast{position:absolute;right:30px;top:24px;bottom:0;width:22px;background:repeating-linear-gradient(45deg,transparent 0 7px,#E0522B 7px 10px),repeating-linear-gradient(-45deg,transparent 0 7px,#E0522B 7px 10px);border-left:3px solid #E0522B;border-right:3px solid #E0522B}
+.jib{position:absolute;right:20px;top:18px;width:46px;height:10px;background:#E0522B;border-radius:4px}
+.cable{position:absolute;width:3px;background:#3A3F48;transform-origin:top center;z-index:3}
+.wball{position:absolute;width:52px;height:52px;margin:-26px 0 0 -26px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#9AA0AA,#3A3F48 70%);box-shadow:0 4px 8px rgba(0,0,0,.35);z-index:4}
 .feedback{min-height:26px;text-align:center;font-weight:600}
 .match{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px}.match .col{display:flex;flex-direction:column;gap:10px}
 .mi{min-height:64px;border:2px solid var(--line);background:var(--surface);border-radius:12px;padding:8px 10px;font-size:17px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:8px;overflow-wrap:anywhere}
@@ -155,6 +174,8 @@ function start(act) {
   if (t.id === 'order') R.qs = pool.map(it => { const s = K.sentenceOf(it); if (!s) return null; const L = s.trim().split(/\s+/); let sh = K.shuffle(L), g = 0; while (sh.join(' ') === L.join(' ') && g++ < 9) sh = K.shuffle(L);
     const hint = s === it.q ? it.a : it.q; return { it: { id: it.id, q: K.words(hint) < 3 ? hint : '', qi: it.qi, a: s }, say: s, L, sep: ' ', tiles: sh.map((c, k) => ({ c, k, used: false })), got: [] }; }).filter(Boolean);
   if (t.id === 'snake') { R.qs = pool.map(it => ({ it, opts: K.options(it, items) })); R.sn = null; }
+  if (t.id === 'pop') { R.qs = pool.filter(it => bbFit(it.a)).map(it => ({ it, opts: K.options(it, items) })); }
+  if (t.id === 'wall') { const mode = wallMode(st, items); R.wmode = mode; R.qs = pool.filter(it => wallFace(it, mode).t || wallFace(it, mode).i).map(it => ({ it })); R.wall = null; }
   if (t.id === 'type') R.qs = pool.map(it => ({ it }));
   if (t.id === 'flash') R.qs = pool.map(it => ({ it, flip: false }));
   if (t.id === 'match') { R.rounds = []; for (let k = 0; k < pool.length; k += 5) R.rounds.push(pool.slice(k, k + 5)); if (R.rounds.length > 1 && R.rounds.at(-1).length < 2) R.rounds.at(-2).push(...R.rounds.pop()); R.r = 0; R.sel = null; R.gone = []; R.order = K.shuffle(R.rounds[0].map(x => x.id)); R.total = pool.length; R.missed = new Set(); }
@@ -162,14 +183,18 @@ function start(act) {
   if (!R.qs && t.id !== 'match' || (R.qs && !R.qs.length)) { bar(); $('#main').innerHTML = `<div class="stage"><div class="panel empty"><h2>لا يوجد محتوى مناسب لهذا القالب</h2></div></div>`; return; }
   P.run = R; P.view = 'run'; draw(); autoSay();
 }
-function autoSay() { const R = P.run; if (!R || !R.st.readAloud || R.done) return; const q = R.qs && R.qs[R.i]; if (q && q.it && (R.t.id === 'mcq' || R.t.id === 'quiz' || R.t.id === 'tf' || R.t.id === 'snake')) setTimeout(() => K.speak(q.it.q), 200); }
+function autoSay() { const R = P.run; if (!R || !R.st.readAloud || R.done) return; const q = R.qs && R.qs[R.i]; if (q && q.it && (R.t.id === 'mcq' || R.t.id === 'quiz' || R.t.id === 'tf' || R.t.id === 'snake' || R.t.id === 'pop')) setTimeout(() => K.speak(sayOf(q.it)), 200); }
 function head(R) {
   if (R.t.id === 'cross') return `<div class="row" style="flex-wrap:nowrap"><button class="btn sm ghost" data-a="quit">${P.data.kind === 'unit' ? 'رجوع للوحدة' : 'خروج'}</button><div class="progress grow"><i style="width:${R.solved / R.cwTotal * 100}%"></i></div><span class="small muted" style="font-variant-numeric:tabular-nums">${R.solved} / ${R.cwTotal}</span></div>`;
   const n = R.qs ? R.qs.length : R.total, at = R.qs ? R.i : R.gone.length + R.rounds.slice(0, R.r).reduce((s, r) => s + r.length, 0);
   return `<div class="row" style="flex-wrap:nowrap"><button class="btn sm ghost" data-a="quit">${P.data.kind === 'unit' ? 'رجوع للوحدة' : 'خروج'}</button><div class="progress grow"><i style="width:${at / n * 100}%"></i></div><span class="small muted" style="font-variant-numeric:tabular-nums">${Math.min(at + 1, n)} / ${n}</span></div>`;
 }
+// what is read aloud: the item's own spoken text when the teacher gave one, else its question
+const sayOf = it => (it && (it.s || it.q)) || '';
+const listenOnly = () => !!(P.run && P.run.st && P.run.st.listen);
 function promptHTML(it, extra = '') {
-  return `<div class="prompt">${frame(it.qi)}${it.q ? `<div class="q" dir="auto">${esc(it.q)}</div>` : ''}${extra}${it.q ? `<button class="say" data-a="say" aria-label="استمع">${ic(SPEAK)}</button>` : ''}</div>`;
+  if (listenOnly()) return `<div class="prompt">${frame(it.qi)}<span class="muted">استمع وأجب</span>${extra}<button class="say" data-a="say" aria-label="استمع" style="width:72px;height:72px">${ic(SPEAK, 32)}</button></div>`;
+  return `<div class="prompt">${frame(it.qi)}${it.q ? `<div class="q" dir="auto">${esc(it.q)}</div>` : ''}${extra}${sayOf(it) ? `<button class="say" data-a="say" aria-label="استمع">${ic(SPEAK)}</button>` : ''}</div>`;
 }
 function draw() {
   const R = P.run; bar(); if (R.done) return;
@@ -182,11 +207,18 @@ function draw() {
     <div class="tiles" dir="${K.dirOf(q.it.a)}">${q.tiles.map((x, k) => `<button class="tile" data-a="tile" data-k="${k}" ${x.used || R.locked ? 'disabled' : ''}>${esc(x.c)}</button>`).join('')}</div><div class="row" style="justify-content:center"><button class="btn sm" data-a="undo" ${q.got.length && !R.locked ? '' : 'disabled'}>تراجع</button></div><div class="feedback" id="fb"></div>`; }
   if (t === 'order') { const q = R.qs[R.i], d = K.dirOf(q.say); body = (q.it.q || q.it.qi ? promptHTML(q.it) : '<p class="muted" style="text-align:center;margin:0;font-size:18px">رتّب الكلمات لتكوّن جملة صحيحة</p>') + `<div class="built" dir="${d}">${q.got.map(x => `<span>${esc(x.c)}</span>`).join('')}</div>
     <div class="tiles" dir="${d}">${q.tiles.map((x, k) => `<button class="tile w" data-a="tile" data-k="${k}" ${x.used || R.locked ? 'disabled' : ''}>${esc(x.c)}</button>`).join('')}</div><div class="row" style="justify-content:center"><button class="btn sm" data-a="undo" ${q.got.length && !R.locked ? '' : 'disabled'}>تراجع</button>${R.st.readAloud ? `<button class="say" data-a="say" aria-label="استمع">${ic(SPEAK)}</button>` : ''}</div><div class="feedback" id="fb"></div>`; }
-  if (t === 'snake') { const q = R.qs[R.i]; body = `<div class="snk"><div class="prompt">${frame(q.it.qi)}${q.it.q ? `<div class="q" dir="auto">${esc(q.it.q)}</div>` : ''}${q.it.q ? `<button class="say" data-a="say" aria-label="استمع">${ic(SPEAK)}</button>` : ''}</div>
+  if (t === 'snake') { const q = R.qs[R.i]; body = `<div class="snk"><div class="prompt">${frame(q.it.qi)}${q.it.q && !listenOnly() ? `<div class="q" dir="auto">${esc(q.it.q)}</div>` : ''}${q.it.q ? `<button class="say" data-a="say" aria-label="استمع">${ic(SPEAK)}</button>` : ''}</div>
     <div class="hintbar"><span class="muted small" id="snHint">${R.sn && R.sn.moving ? 'كُل الجواب الصحيح' : 'اضغط سهماً، أو اسحب بإصبعك، لتبدأ'}</span><span id="snLen" class="small muted">الطول: ${R.sn ? R.sn.body.length : 3}</span></div>
     <canvas id="snCv"></canvas><div class="pad"><span></span><button data-a="sdir" data-v="u" aria-label="أعلى">↑</button><span></span><button data-a="sdir" data-v="l" aria-label="يسار">←</button><button data-a="sdir" data-v="d" aria-label="أسفل">↓</button><button data-a="sdir" data-v="r" aria-label="يمين">→</button></div>
     <div class="feedback" id="fb"></div></div>`; }
   if (t === 'cross') { body = cwHTML(R); $('#main').innerHTML = `<div class="stage wide">${head(R)}${body}</div>`; return; }
+  if (t === 'pop') { const q = R.qs[R.i]; body = `<div class="snk"><div class="prompt">${frame(q.it.qi)}${q.it.q && !listenOnly() ? `<div class="q" dir="auto">${esc(q.it.q)}</div>` : ''}${q.it.q ? `<button class="say" data-a="say" aria-label="استمع">${ic(SPEAK)}</button>` : ''}</div>
+    <p class="muted small" style="text-align:center;margin:0" id="bbHint">صوّب الكرة نحو الكلمة الصحيحة لتُسقطها</p><canvas id="bbCv" style="background:#1E2A4A;box-shadow:none;cursor:crosshair"></canvas><div class="feedback" id="fb"></div></div>`; }
+  if (t === 'wall') { const q = R.qs[R.i]; wallPrep(R); const listen = R.wmode === 'word' || listenOnly();
+    body = `<div class="prompt" style="padding:12px 16px;gap:8px;flex-direction:row;justify-content:center;flex-wrap:wrap">${listen ? '<span style="font-size:20px;font-weight:600">استمع، ثم اهدم الكلمة</span>' : `<div class="q" dir="auto" style="font-size:clamp(22px,4vw,30px)">${esc(q.it.q)}</div>`}<button class="say" data-a="say" aria-label="استمع" style="${listen ? 'width:58px;height:58px' : ''}">${ic(SPEAK, listen ? 28 : 22)}</button></div>
+    <div class="wscene" id="wscene"><span class="cloud" style="left:8%;top:10px"></span><span class="cloud" style="left:58%;top:30px;width:50px"></span><div class="jib"></div><div class="mast"></div>
+      <div class="bld"><div class="bgrid">${R.wall.map((b, k) => `<button class="brk ${b.gone ? 'gone' : ''}" data-a="wbrk" data-k="${k}" ${b.gone ? 'disabled' : ''} aria-label="${esc(b.f.t || 'صورة')}">${b.gone ? '' : b.f.i ? frame(b.f.i) : `<span dir="auto" class="${[...b.f.t].length > 8 ? 'l' : [...b.f.t].length > 6 ? 'm' : ''}">${esc(b.f.t)}</span>`}</button>`).join('')}</div><div class="bbase"><i></i></div></div>
+      <div class="cable" id="wcable"></div><div class="wball" id="wball"></div></div><div class="feedback" id="fb"></div>`; }
   if (t === 'flash') { const q = R.qs[R.i]; body = `<button class="flash" data-a="flip"><div class="face ${q.flip ? 'back' : ''}">${q.flip ? `${frame(q.it.ai)}<span dir="auto">${esc(q.it.a)}</span>` : `${frame(q.it.qi)}<span dir="auto">${esc(q.it.q)}</span>`}</div></button>
     <p class="small muted" style="text-align:center;margin:0">اضغط على البطاقة لقلبها</p><div class="row" style="justify-content:center"><button class="say" data-a="say" aria-label="استمع">${ic(SPEAK)}</button></div>
     <div class="opts"><button class="opt" data-a="know" data-v="0" style="color:var(--bad);font-size:17px">لم أعرفها</button><button class="opt" data-a="know" data-v="1" style="color:var(--ok-ink);font-size:17px">عرفتها</button></div>`; }
@@ -194,6 +226,8 @@ function draw() {
     <div class="col">${R.order.map(id => { const it = round.find(x => x.id === id); return `<button class="mi ${R.gone.includes(id) ? 'gone' : ''} ${R.sel && R.sel.s === 'a' && R.sel.id === id ? 'sel' : ''}" data-a="mt" data-s="a" data-id="${id}">${frame(it.ai)}<span dir="auto">${esc(it.a)}</span></button>`; }).join('')}</div></div>`; }
   $('#main').innerHTML = `<div class="stage">${head(R)}${body}</div>`;
   if (t === 'snake') snakeRound();
+  if (t === 'wall') wallReady();
+  if (t === 'pop') bbRound();
   const ti = $('#typeIn'); if (ti) ti.focus();
 }
 // first try counts; practice shows the right answer at once, test moves on without feedback
@@ -215,7 +249,7 @@ function end() { const R = P.run; snakeStop(); R.done = true; const total = R.qs
 // ================= snake: the question sits on top, the snake eats the right answer =================
 const SN = { cols: 18, rows: 12, step: 210, timer: null, imgs: {} };
 const SN_COL = ['#FFE3A3', '#CFE3FF', '#FFD3DF', '#E3D7FF'];
-function snakeStop() { if (SN.timer) { clearInterval(SN.timer); SN.timer = null; } }
+function snakeStop() { if (SN.timer) { clearInterval(SN.timer); SN.timer = null; } BB.on = false; }
 function snakeRound() {
   const R = P.run, cv = $('#snCv'); if (!cv) return;
   const W = cv.parentNode.clientWidth; if (W < 560) { SN.cols = 11; SN.rows = 12; } else { SN.cols = 18; SN.rows = 12; }
@@ -377,7 +411,7 @@ function cwHTML(R) {
       <div class="feedback" id="fb">${R.boards.length > 1 ? `<span class="muted small">الشبكة ${R.b + 1} من ${R.boards.length}</span>` : ''}</div></div>
     <div class="cwClues">${clues}</div></div>`;
 }
-function cwSelect(i) { const B = P.run.boards[P.run.b]; B.sel = i; const w = B.words[i]; B.pos = 0; draw(); if (P.run.st.readAloud && w.it.q) K.speak(w.it.q); }
+function cwSelect(i) { const B = P.run.boards[P.run.b]; B.sel = i; const w = B.words[i]; B.pos = 0; draw(); if (P.run.st.readAloud && sayOf(w.it)) K.speak(sayOf(w.it)); }
 function cwCell(key) {
   const B = P.run.boards[P.run.b], cell = B.cells[key]; if (!cell) return;
   const cand = cell.ws.filter(i => !B.words[i].done), cur = cand.includes(B.sel) && cand.length > 1 ? cand.find(i => i !== B.sel) : (cand.includes(B.sel) ? B.sel : cand[0] ?? cell.ws[0]);
@@ -415,6 +449,122 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Tab' || e.key === 'Enter') { e.preventDefault(); const B = R.boards[R.b], n = B.words.length; for (let i = 1; i <= n; i++) { const j = (B.sel + (e.shiftKey ? -i : i) + n * 2) % n; if (!B.words[j].done) return cwSelect(j); } return; }
   if (e.key.length === 1 && /\p{L}/u.test(e.key)) { e.preventDefault(); cwType(e.key); }
 });
+
+// ================= word bubbles: shoot the ball at the bubbles of the right word to drop it =================
+const BB = { cols: 11, W: 440, H: 560, r: 20, on: false };
+const BB_WORD = ['#F2B705', '#E8436B', '#2BB5A0', '#8B5CF6'], BB_FILL = ['#CFE6FB', '#DCEFFD', '#C4DDF7'];
+const bbFit = a => { const L = [...String(a || '').trim()]; return L.length >= 1 && L.length <= 11 && !L.includes(' '); };
+const bbXY = (row, col) => ({ x: BB.r + col * 2 * BB.r + (row % 2 ? BB.r : 0), y: BB.r + 6 + row * BB.r * 1.74 });
+const bbCols = row => row % 2 ? BB.cols - 1 : BB.cols;
+function bbRound() {
+  const R = P.run, cv = $('#bbCv'); if (!cv) return;
+  const dpr = window.devicePixelRatio || 1, w = Math.min(cv.parentNode.clientWidth, 480);
+  cv.width = BB.W * dpr; cv.height = BB.H * dpr; cv.style.width = w + 'px'; cv.style.height = (w * BB.H / BB.W) + 'px'; cv.style.margin = '0 auto'; cv.style.borderRadius = '18px'; BB.dpr = dpr; BB.k = w / BB.W;
+  const q = R.qs[R.i];
+  // the right word plus wrong words that still fit on one row of 11 bubbles
+  let words = [{ text: q.it.a, ok: true }], room = BB.cols - [...q.it.a].length;
+  for (const o of K.shuffle(q.opts.filter(o => !o.ok && bbFit(o.t)))) { const n = [...o.t].length; if (n + 1 <= room && words.length < 4) { words.push({ text: o.t, ok: false }); room -= n + 1; } }
+  words = K.shuffle(words); const cols = BB_WORD.slice(); words.forEach((w, i) => w.color = cols[i]);
+  const cells = new Map(), WROW = 4;
+  for (let row = 0; row < WROW; row++) for (let col = 0; col < bbCols(row); col++) cells.set(row + ',' + col, { row, col, color: BB_FILL[(row + col) % 3] });
+  // spread the words along the word row with equal gaps
+  const used = words.reduce((n, w) => n + [...w.text].length, 0), free = BB.cols - used, gap = Math.max(1, Math.floor(free / (words.length + 1)));
+  let col = Math.max(0, Math.floor((free - gap * (words.length - 1)) / 2));
+  words.forEach((w, wi) => { const L = [...w.text], rtl = K.dirOf(w.text) === 'rtl'; w.cells = [];
+    L.forEach((ch, k) => { const c = { row: WROW, col: col + k, color: w.color, ch: rtl ? L[L.length - 1 - k] : ch, word: wi }; cells.set(WROW + ',' + (col + k), c); w.cells.push(c); });
+    col += L.length + gap; });
+  R.bb = { cells, words, ball: null, ang: -Math.PI / 2, fall: [], shake: 0, bad: -1, done: false };
+  R.locked = false;
+  if (!BB.on) { BB.on = true; requestAnimationFrame(bbLoop); }
+}
+function bbLoop() {
+  const R = P.run; if (!BB.on || !R || R.done || R.t.id !== 'pop' || !$('#bbCv')) { BB.on = false; return; }
+  bbStep(R); bbDraw(R); requestAnimationFrame(bbLoop);
+}
+function bbAim(e) { const R = P.run; if (!R || !R.bb) return; const cv = $('#bbCv'), b = cv.getBoundingClientRect(); const k = b.width / BB.W, x = (e.clientX - b.left) / k, y = (e.clientY - b.top) / k;
+  let a = Math.atan2(y - (BB.H - 34), x - BB.W / 2); a = Math.max(-Math.PI + .14, Math.min(-.14, a > Math.PI / 2 ? -Math.PI + .14 : a)); R.bb.ang = a; }
+function bbShoot() { const R = P.run; if (!R || !R.bb || R.bb.ball || R.locked || R.bb.done) return; const s = 11; R.bb.ball = { x: BB.W / 2, y: BB.H - 34, vx: Math.cos(R.bb.ang) * s, vy: Math.sin(R.bb.ang) * s }; }
+function bbHit(x, y, cells) { for (const c of cells.values()) { const p = bbXY(c.row, c.col); if ((p.x - x) ** 2 + (p.y - y) ** 2 < (BB.r * 1.8) ** 2) return c; } return null; }
+function bbStep(R) {
+  const B = R.bb; B.fall.forEach(f => { f.vy += .5; f.y += f.vy; f.x += f.vx; }); B.fall = B.fall.filter(f => f.y < BB.H + 40); if (B.shake) B.shake--;
+  const b = B.ball; if (!b) return;
+  for (let s = 0; s < 4; s++) {
+    b.x += b.vx / 4; b.y += b.vy / 4;
+    if (b.x < BB.r) { b.x = BB.r; b.vx = -b.vx; } if (b.x > BB.W - BB.r) { b.x = BB.W - BB.r; b.vx = -b.vx; }
+    const c = bbHit(b.x, b.y, B.cells);
+    if (c && c.word != null) { B.ball = null; return bbWordHit(R, B.words[c.word], c.word); }
+    if (c || b.y < BB.r + 6) { B.ball = null; bbStick(B, b); return; }
+  }
+}
+function bbStick(B, b) { let best = null;
+  for (let row = 0; row < 14; row++) for (let col = 0; col < bbCols(row); col++) { if (B.cells.has(row + ',' + col)) continue; const p = bbXY(row, col), d = (p.x - b.x) ** 2 + (p.y - b.y) ** 2; if (!best || d < best.d) best = { row, col, d }; }
+  if (best) B.cells.set(best.row + ',' + best.col, { row: best.row, col: best.col, color: '#FFFFFF' }); }
+function bbWordHit(R, w, wi) {
+  const B = R.bb;
+  if (w.ok) { B.done = true; w.cells.forEach(c => { const p = bbXY(c.row, c.col); B.cells.delete(c.row + ',' + c.col); B.fall.push({ ...c, x: p.x, y: p.y, vx: (Math.random() - .5) * 3, vy: -3 - Math.random() * 3 }); });
+    answer(true); return; }
+  B.shake = 24; B.bad = wi;
+  if (R.st.mode === 'test') { B.done = true; answer(false); return; }
+  R.tries++; K.tone(false); if (R.tries === 1) R.wrong.push(R.qs[R.i].it.q || R.qs[R.i].it.a);
+  const fb = $('#fb'); if (fb) fb.innerHTML = `<span style="color:var(--bad)">ليست «<span dir="auto">${esc(w.text)}</span>». جرّب كلمة أخرى</span>`;
+}
+function bbBubble(g, x, y, color, ch) {
+  const r = BB.r - 1, gr = g.createRadialGradient(x - r * .35, y - r * .4, r * .1, x, y, r);
+  gr.addColorStop(0, '#FFFFFF'); gr.addColorStop(.25, color); gr.addColorStop(1, color);
+  g.fillStyle = gr; g.beginPath(); g.arc(x, y, r, 0, 7); g.fill(); g.strokeStyle = 'rgba(0,0,0,.18)'; g.lineWidth = 1.5; g.stroke();
+  if (ch) { g.fillStyle = '#fff'; g.font = `700 ${Math.round(r * 1.05)}px Rubik, system-ui, sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.lineWidth = 3; g.strokeStyle = 'rgba(0,0,0,.35)'; g.strokeText(ch, x, y + 1); g.fillText(ch, x, y + 1); }
+}
+function bbDraw(R) {
+  const cv = $('#bbCv'); if (!cv) return; const g = cv.getContext('2d'), B = R.bb; g.setTransform(BB.dpr, 0, 0, BB.dpr, 0, 0);
+  const bg = g.createLinearGradient(0, 0, 0, BB.H); bg.addColorStop(0, '#24345E'); bg.addColorStop(1, '#3B2F6B'); g.fillStyle = bg; g.fillRect(0, 0, BB.W, BB.H);
+  // aiming guide: dots that bounce off the walls until they meet a bubble
+  if (!B.ball && !B.done) { let x = BB.W / 2, y = BB.H - 34, vx = Math.cos(B.ang) * 6, vy = Math.sin(B.ang) * 6; g.fillStyle = 'rgba(255,255,255,.85)';
+    for (let i = 0; i < 150; i++) { x += vx; y += vy; if (x < BB.r || x > BB.W - BB.r) vx = -vx; if (y < BB.r || bbHit(x, y, B.cells)) break; if (i % 4 === 0) { g.beginPath(); g.arc(x, y, 3, 0, 7); g.fill(); } } }
+  for (const c of B.cells.values()) { const p = bbXY(c.row, c.col), dx = c.word === B.bad && B.shake ? Math.sin(B.shake * 1.6) * 4 : 0; bbBubble(g, p.x + dx, p.y, c.word === B.bad && B.shake ? '#C2362B' : c.color, c.ch); }
+  B.fall.forEach(f => bbBubble(g, f.x, f.y, f.color, f.ch));
+  // shooter
+  g.fillStyle = 'rgba(255,255,255,.12)'; g.beginPath(); g.ellipse(BB.W / 2, BB.H - 18, 46, 14, 0, 0, 7); g.fill();
+  const b = B.ball; bbBubble(g, b ? b.x : BB.W / 2, b ? b.y : BB.H - 34, '#FFFFFF');
+}
+document.addEventListener('pointermove', e => { if (e.target.id === 'bbCv') bbAim(e); });
+document.addEventListener('pointerdown', e => { if (e.target.id === 'bbCv') { bbAim(e); } });
+document.addEventListener('pointerup', e => { if (e.target.id === 'bbCv') { bbAim(e); bbShoot(); } });
+document.addEventListener('keydown', e => { const R = P.run; if (!R || R.done || R.t.id !== 'pop' || !R.bb) return;
+  if (e.key === 'ArrowLeft') { R.bb.ang = Math.max(-Math.PI + .14, R.bb.ang - .06); e.preventDefault(); }
+  if (e.key === 'ArrowRight') { R.bb.ang = Math.min(-.14, R.bb.ang + .06); e.preventDefault(); }
+  if (e.key === ' ' || e.key === 'Enter' || e.key === 'ArrowUp') { bbShoot(); e.preventDefault(); } });
+
+// ================= demolition: the word is read, the student finds its brick and the ball knocks it out =================
+function wallMode(st, items) { if (st.bricks) return st.bricks; return 'meaning'; }
+function wallFace(it, mode) { return mode === 'word' ? { t: it.q, i: '' } : mode === 'picture' ? { t: it.ai || it.qi ? '' : it.a, i: it.ai || it.qi } : { t: it.a || '', i: it.a ? '' : it.ai }; }
+function wallPrep(R) {
+  const q = R.qs[R.i], all = R.qs.map(x => x.it), same = (a, b) => a.id === b.id;
+  const fill = () => { const pool = K.shuffle(all.filter(x => !same(x, q.it))), out = [q.it]; let k = 0; while (out.length < 16 && pool.length) out.push(pool[k++ % pool.length]); while (out.length < 16) out.push(q.it); return K.shuffle(out).map(it => ({ it, f: wallFace(it, R.wmode), gone: false })); };
+  if (!R.wall || R.wall.filter(b => !b.gone).length < 4) R.wall = fill();
+  const tf = wallFace(q.it, R.wmode); if (!R.wall.some(b => !b.gone && (same(b.it, q.it) || (tf.t && K.norm(b.f.t) === K.norm(tf.t))))) { const left = R.wall.filter(b => !b.gone && !R.qs.slice(R.i + 1, R.i + 2).some(n => same(n.it, b.it))); const b = left[Math.floor(Math.random() * left.length)] || R.wall.find(x => !x.gone); b.it = q.it; b.f = wallFace(q.it, R.wmode); }
+}
+function wallBallAt(x, y, anim) {
+  const sc = $('#wscene'), ball = $('#wball'), cab = $('#wcable'); if (!sc || !ball) return;
+  const px = sc.clientWidth - (sc.clientWidth < 500 ? 22 : 40), py = 22, dx = x - px, dy = y - py, len = Math.hypot(dx, dy), ang = Math.atan2(dx, dy);
+  [ball, cab].forEach(e => e.style.transition = anim ? 'all .32s cubic-bezier(.5,0,.75,0)' : 'none');
+  ball.style.left = x + 'px'; ball.style.top = y + 'px';
+  cab.style.left = px + 'px'; cab.style.top = py + 'px'; cab.style.height = len + 'px'; cab.style.transform = `rotate(${-ang}rad)`;
+}
+function wallRest() { const sc = $('#wscene'); if (sc) wallBallAt(sc.clientWidth - (sc.clientWidth < 500 ? 22 : 40), sc.clientHeight * .52, false); }
+function wallReady() { wallRest(); const R = P.run; if (R && R.st.readAloud !== false || R.wmode === 'word' || R.st.listen) setTimeout(() => K.speak(sayOf(R.qs[R.i].it)), 250); }
+function wallHit(k, el) {
+  const R = P.run; if (!R || R.locked || R.busy) return; const b = R.wall[k]; if (!b || b.gone) return;
+  const sc = $('#wscene').getBoundingClientRect(), r = el.getBoundingClientRect(), x = r.left - sc.left + r.width / 2, y = r.top - sc.top + r.height / 2;
+  R.busy = true; wallBallAt(x, y, true);
+  setTimeout(() => {
+    const tg = wallFace(R.qs[R.i].it, R.wmode), ok = b.it.id === R.qs[R.i].it.id || (!!b.f.t && K.norm(b.f.t) === K.norm(tg.t));
+    if (ok) { b.gone = true; el.classList.add('gone'); el.innerHTML = ''; el.disabled = true; R.busy = false; answer(true); }
+    else { el.classList.add('no'); setTimeout(() => el.classList.remove('no'), 400);
+      if (R.st.mode === 'test') { R.busy = false; answer(false); }
+      else { R.tries++; K.tone(false); if (R.tries === 1) R.wrong.push(R.qs[R.i].it.q); const fb = $('#fb'); if (fb) fb.innerHTML = '<span style="color:var(--bad)">ليست هذه. استمع مرة أخرى</span>'; setTimeout(() => { R.busy = false; wallRest(); }, 380); } }
+  }, 330);
+}
+window.addEventListener('resize', () => { if (P.run && P.run.t && P.run.t.id === 'wall' && !P.run.busy) wallRest(); });
 
 // ================= games =================
 function launchGame(act, items, st) {
@@ -469,6 +619,7 @@ document.addEventListener('click', e => {
     case 'cwKey': cwType(el.dataset.v); break;
     case 'cwBack': cwBack(); break;
     case 'cwHint': cwHint(); break;
+    case 'wbrk': wallHit(+el.dataset.k, el); break;
     case 'sdir': snakeTurn(el.dataset.v); break;
     case 'startAct': start(P.data.acts.find(x => x.id === el.dataset.id)); break;
     case 'door': P.door = el.dataset.v; render(); break;
@@ -476,7 +627,7 @@ document.addEventListener('click', e => {
     case 'quit': snakeStop(); try { speechSynthesis.cancel(); } catch (er) {} if (P.data.kind === 'unit') { P.run = null; P.view = 'unit'; render(); } else start(P.data.acts[0]); break;
     case 'again': start(P.last.act); break;
     case 'lbAll': P.last.all = !P.last.all; drawEnd(); break;
-    case 'say': { const q = R.qs ? R.qs[R.i] : null; if (q) K.speak(q.say || (R.t.id === 'flash' && q.flip ? q.it.a : q.it.q)); break; }
+    case 'say': { const q = R.qs ? R.qs[R.i] : null; if (q) K.speak(q.say || (R.t.id === 'flash' && q.flip ? q.it.a : sayOf(q.it))); break; }
     case 'pick': { if (R.locked) return; const q = R.qs[R.i], o = q.opts[+el.dataset.k], test = R.st.mode === 'test';
       if (!test) document.querySelectorAll('.opt').forEach((b, k) => { if (q.opts[k].ok) b.classList.add('ok'); else if (b === el) b.classList.add('no'); else b.classList.add('dim'); });
       else el.classList.add('sel'); answer(o.ok); break; }
