@@ -166,7 +166,7 @@ function imgBtn(it, f, owner, flat) {
 function quickAdd(owner, needs) {
   return `<section class="panel" style="display:flex;flex-direction:column;gap:6px"><h2 style="font-size:16px;margin-bottom:4px">أضف بسرعة</h2>
     <button class="btn ghost" data-a="pasteList" data-o="${owner}" style="justify-content:flex-start;flex-direction:column;align-items:flex-start;gap:0;padding:10px"><b>الصق دفعة واحدة</b><span class="small muted" style="font-weight:400">كلمات، أو جمل، أو امتحان من Word</span></button>
-    <button class="btn ghost" disabled style="justify-content:flex-start;flex-direction:column;align-items:flex-start;gap:0;padding:10px"><b>من نص إلى أسئلة <span class="chip" style="background:var(--ink);color:#fff">PRO</span></b><span class="small muted" style="font-weight:400">الذكاء الاصطناعي يقترح أسئلة لتراجعها · قريباً</span></button>
+    <button class="btn ghost" data-a="aiOpen" data-o="${owner}" style="justify-content:flex-start;flex-direction:column;align-items:flex-start;gap:0;padding:10px"><b>✨ اطلب من الذكاء الاصطناعي</b><span class="small muted" style="font-weight:400">طلب جاهز تنسخه إلى Claude أو ChatGPT، ثم تلصق الجواب</span></button>
   </section>`;
 }
 
@@ -174,10 +174,34 @@ function quickAdd(owner, needs) {
 const PASTE_EX = 'cat - قطة&#10;dog - كلب&#10;The cat is on the mat.&#10;&#10;أو امتحان:&#10;1. Which animal can fly?&#10;a) *bird&#10;b) fish&#10;c) cow&#10;d) dog';
 function pasteBox(owner, big) {
   return `<section class="panel" style="display:flex;flex-direction:column;gap:12px;${big ? 'padding:24px;border:2px solid var(--brand-line)' : ''}">
-    <div><h2 style="${big ? 'font-size:22px' : 'font-size:17px'}">الصق كل المحتوى مرة واحدة</h2>
+    <div><div class="row"><h2 class="grow" style="${big ? 'font-size:22px' : 'font-size:17px'}">الصق كل المحتوى مرة واحدة</h2><button class="btn sm" data-a="aiOpen" data-o="${owner}" style="border-color:var(--brand-line);color:var(--brand)">✨ اطلب من الذكاء الاصطناعي</button></div>
     <p class="muted" style="margin:6px 0 0">كل عنصر في سطر. كلمة ومعناها: <b dir="ltr">cat - قطة</b> · جملة كاملة في سطر · أو امتحان من Word بالأجوبة أ) ب) ج) د) وضع * قبل الجواب الصحيح.</p></div>
     <textarea class="in" id="pasteInl" data-o="${owner}" dir="auto" style="min-height:${big ? 220 : 160}px;font-size:16px" placeholder="${PASTE_EX}"></textarea>
     <div class="row"><span id="pasteHint" class="small muted grow">الصق أو اكتب، وKalima يفهم النوع تلقائياً.</span><button class="btn pri lg" data-a="pasteInl" data-o="${owner}">أضف المحتوى</button></div></section>`;
+}
+const AI = { kind: 'questions', topic: '', grade: '4', n: 10, lang: 'English', mean: 'Arabic' };
+function aiPrompt() {
+  const g = AI.grade ? `grade ${AI.grade} students` : 'students', t = AI.topic.trim() || '[TOPIC]';
+  const head = `You are helping a teacher make a classroom activity for ${g}. Topic: ${t}.\n`;
+  const tail = `\nReturn ONLY the list, no title, no explanations, no extra lines.`;
+  if (AI.kind === 'questions') return head + `Write ${AI.n} multiple-choice questions in ${AI.lang}, at the right level for these students. Each question has exactly 4 answers, one correct.\nUse exactly this format, and put * before the correct answer:\n1. Question text?\na) answer\nb) *correct answer\nc) answer\nd) answer` + tail;
+  if (AI.kind === 'words') return head + `Write ${AI.n} key words in ${AI.lang}, each with its meaning in ${AI.mean}.\nUse exactly this format, one per line:\nword - meaning` + tail;
+  return head + `Write ${AI.n} short, simple sentences in ${AI.lang} (4 to 9 words each), one sentence per line, each with its ${AI.mean} translation.\nUse exactly this format, one per line:\nsentence - translation` + tail;
+}
+function aiModal(o) {
+  const seg = (k, opts) => `<div class="seg" style="flex-wrap:wrap">${opts.map(([v, l]) => `<button class="${String(AI[k]) === String(v) ? 'on' : ''}" data-a="aiSet" data-k="${k}" data-v="${v}" data-o="${o}">${l}</button>`).join('')}</div>`;
+  $('#modal').innerHTML = `<div class="overlay" data-a="mclose"><div class="sheet" style="width:min(680px,100%)"><div class="row"><h2 class="grow">✨ اطلب من الذكاء الاصطناعي</h2><button class="ico" data-a="mclose" aria-label="إغلاق">${ic('x', 16)}</button></div>
+    <p class="small muted" style="margin:0">اختر ما تريد، انسخ الطلب، والصقه في Claude أو ChatGPT. انسخ الجواب ثم الصقه في صندوق اللصق في Kalima. راجع المحتوى دائماً قبل إعطائه للطلاب.</p>
+    <div class="field"><span>ماذا تريد؟</span>${seg('kind', [['questions', 'أسئلة بأربعة أجوبة'], ['words', 'كلمات ومعانيها'], ['sentences', 'جمل وترجمتها']])}</div>
+    <label class="field"><span>الموضوع أو الدرس</span><input class="in" id="aiTopic" dir="auto" value="${esc(AI.topic)}" placeholder="مثال: animals and their homes · الكسور · present simple"></label>
+    <div class="row" style="gap:14px;align-items:flex-end">
+      <label class="field"><span>الصف</span><select class="in" id="aiGrade" style="width:110px">${['', 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(x => `<option value="${x}" ${String(AI.grade) === String(x) ? 'selected' : ''}>${x || '—'}</option>`).join('')}</select></label>
+      <label class="field"><span>العدد</span><select class="in" id="aiN" style="width:90px">${[5, 8, 10, 12, 15, 20].map(x => `<option ${+AI.n === x ? 'selected' : ''}>${x}</option>`).join('')}</select></label>
+      <label class="field"><span>لغة المحتوى</span><select class="in" id="aiLang" style="width:130px">${[['English', 'إنجليزي'], ['Arabic', 'عربي'], ['Hebrew', 'عبري']].map(([v, l]) => `<option value="${v}" ${AI.lang === v ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
+      ${AI.kind === 'questions' ? '' : `<label class="field"><span>لغة المعنى</span><select class="in" id="aiMean" style="width:130px">${[['Arabic', 'عربي'], ['Hebrew', 'عبري'], ['English', 'إنجليزي']].map(([v, l]) => `<option value="${v}" ${AI.mean === v ? 'selected' : ''}>${l}</option>`).join('')}</select></label>`}</div>
+    <textarea class="in" id="aiOut" dir="ltr" readonly style="min-height:150px;font-size:13px;text-align:left">${esc(aiPrompt())}</textarea>
+    <div class="row"><button class="btn pri" data-a="aiCopy">${ic('copy', 16)}انسخ الطلب</button><a class="btn" href="https://claude.ai/new" target="_blank" rel="noopener">افتح Claude</a><a class="btn" href="https://chatgpt.com/" target="_blank" rel="noopener">افتح ChatGPT</a>
+      <span class="grow"></span><button class="btn" data-a="aiPaste" data-o="${o}">الصق الجواب هنا</button></div></div></div>`;
 }
 function describePaste(txt) {
   if (!txt.trim()) return 'الصق أو اكتب، وKalima يفهم النوع تلقائياً.';
@@ -487,6 +511,10 @@ document.addEventListener('click', async e => {
     case 'picUse': ownerItems(PIC.o).find(x => x.id === PIC.id)[PIC.f] = v; touch(PIC.o); PIC.id = null; renderPic(); render(); break;
     case 'picDel': ownerItems(PIC.o).find(x => x.id === PIC.id)[PIC.f] = ''; touch(PIC.o); PIC.id = null; renderPic(); render(); break;
     case 'pasteExam': case 'pasteList': openPaste(o); break;
+    case 'aiOpen': aiModal(o); break;
+    case 'aiSet': AI[el.dataset.k] = v; aiModal(o); break;
+    case 'aiCopy': { const t = $('#aiOut'); try { await navigator.clipboard.writeText(t.value); toast('تم نسخ الطلب. الصقه في Claude أو ChatGPT'); } catch (er) { t.select(); toast('اضغط Ctrl+C للنسخ'); } break; }
+    case 'aiPaste': openPaste(o); break;
     case 'mkRight': { const it = ownerItems(o).find(x => x.id === id), j = +el.dataset.k; if (!it) return; const { S } = slotsOf(it);
       if (!(S[j] || '').trim()) { toast('اكتب الجواب أولاً'); return; }
       it.p = j; it.a = S[j]; it.w = S.filter((_, i) => i !== j); touch(o); render(); toast('صار «' + it.a + '» هو الجواب الصحيح'); break; }
@@ -543,6 +571,7 @@ document.addEventListener('input', e => {
   if (el.id === 'libQ') { S.libQ = el.value; const pos = el.selectionStart; render(); const n = $('#libQ'); n.focus(); n.setSelectionRange(pos, pos); return; }
   if (el.id === 'aTitle') { S.draft.title = el.value; saveDraft(); return; }
   if (el.id === 'uTitle') { S.unit.title = el.value; saveUnit(); return; }
+  if (['aiTopic', 'aiGrade', 'aiN', 'aiLang', 'aiMean'].includes(el.id)) { AI[{ aiTopic: 'topic', aiGrade: 'grade', aiN: 'n', aiLang: 'lang', aiMean: 'mean' }[el.id]] = el.value; const t = $('#aiOut'); if (t) t.value = aiPrompt(); return; }
   if (el.id === 'pasteInl') { const h = $('#pasteHint'); if (h) h.textContent = describePaste(el.value); return; }
   if (a === 'itxt') { const it = ownerItems(el.dataset.o).find(x => x.id === el.dataset.id); if (it) { it[el.dataset.f] = el.value; touch(el.dataset.o); } return; }
   if (a === 'iw') { const it = ownerItems(el.dataset.o).find(x => x.id === el.dataset.id); if (it) { it.w[+el.dataset.k] = el.value; touch(el.dataset.o); } return; }
