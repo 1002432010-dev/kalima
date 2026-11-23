@@ -94,6 +94,8 @@
 <header class="bar" id="bar"></header>
 <main id="main"></main>
 <script src="k-core.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="k-cloud.js"></script>
 <script src="sounds.js"></script>
 <script>
 'use strict';
@@ -588,10 +590,12 @@ function finish(act, r) {
   const st = act.settings || K.settingsFor(act.template), test = st.mode === 'test';
   const score = r.total ? Math.round(r.correct / r.total * 100) : 0;
   const rec = { name: P.name, act: act.id, score, correct: r.correct, total: r.total, ms: r.ms, at: Date.now(), wrong: r.wrong || [] };
-  if (!P.data.preview) DB.addResult(P.data.code, rec);
+  if (!P.data.preview) { DB.addResult(P.data.code, rec); if (window.KC) KC.addResult(P.data.code, rec); }
   P.view = 'end'; P.run = null; P.last = { act, rec, st, all: false }; drawEnd();
 }
 function drawEnd() {
+  // the leaderboard from every device: fetch once, then draw again
+  if (window.KC && KC.ok && P.last && !P.last.synced && !P.data.preview) { P.last.synced = true; setTimeout(() => KC.results(P.data.code).then(r => { if (r && P.view === 'end') drawEnd(); }), 700); }
   const { act, rec, st, all } = P.last, test = st.mode === 'test', lbOn = st.leaderboard && !test && !P.data.preview;
   bar();
   const board = lbOn ? K.board(P.data.code, act.id) : [], me = board.findIndex(b => K.norm(b.name) === K.norm(P.name));
