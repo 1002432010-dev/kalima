@@ -14,6 +14,7 @@
 <div id="foot"></div>
 <div id="modal"></div>
 <script src="k-core.js"></script>
+<script src="k-i18n.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script src="k-cloud.js"></script>
 <script src="seeds.js"></script>
@@ -49,18 +50,18 @@ function barHTML() {
     const st = { tpl: 1, edit: 2, use: 3 }[S.view];
     const li = (n, t) => `<li class="${n === st ? 'on' : n < st ? 'done' : ''}"><b>${n < st ? ic('check', 12, 3) : n}</b>${t}</li>`;
     return `<button class="logo" data-a="go" data-v="my"><i>K</i>Kalima</button><ol class="steps" aria-label="خطوات النشاط">${li(1, 'القالب')}${li(2, 'المحتوى')}${li(3, 'الاستعمال')}</ol>
-      <button class="btn sm" data-a="go" data-v="my">${S.view === 'use' ? 'تم' : 'إلغاء'}</button>`;
+      <button class="btn sm" data-a="go" data-v="my">${S.view === 'use' ? 'تم' : 'إلغاء'}</button>${KI.picker()}`;
   }
   if (S.view === 'unit') {
     const st = S.ustep, done = unitDone();
     const li = (n, t) => `<li class="${n === st ? 'on' : n < st || done[n] ? 'done' : ''}"><button data-a="ustep" data-v="${n}" style="all:unset;cursor:pointer;display:flex;align-items:center;gap:8px"><b>${n !== st && done[n] ? ic('check', 12, 3) : n}</b>${t}</button></li>`;
     return `<button class="logo" data-a="go" data-v="my"><i>K</i>Kalima</button><ol class="steps" aria-label="خطوات الوحدة">${li(1, 'الوحدة')}${li(2, 'المحتوى')}${li(3, 'الأنشطة')}${li(4, 'المشاركة')}</ol>
-      <button class="btn sm" data-a="go" data-v="my">${st === 4 ? 'تم' : 'حفظ وخروج'}</button>`;
+      <button class="btn sm" data-a="go" data-v="my">${st === 4 ? 'تم' : 'حفظ وخروج'}</button>${KI.picker()}`;
   }
   const nav = [['my', 'أنشطتي'], ['library', 'المكتبة'], ['results', 'النتائج']];
   return `<button class="logo" data-a="go" data-v="my"><i>K</i>Kalima</button>
     <nav class="nav" aria-label="القائمة الرئيسية">${nav.map(([k, l]) => `<button class="${S.view === k ? 'on' : ''}" data-a="go" data-v="${k}">${l}</button>`).join('')}</nav>
-    ${acctBtn()}<button class="btn pri" data-a="go" data-v="create">${ic('plus', 18, 2)}إنشاء</button>`;
+    ${acctBtn()}<button class="btn pri" data-a="go" data-v="create">${ic('plus', 18, 2)}إنشاء</button>${KI.picker()}`;
 }
 // teacher account: signed in = work saved on every device and results from every student
 const signedIn = () => !!(window.KC && KC.user);
@@ -93,8 +94,8 @@ function viewMy() {
   return `<div class="page">
     ${window.KC && KC.ok && !signedIn() ? `<section class="panel row" style="background:var(--brand-soft);border-color:var(--brand-line)"><span class="grow">سجّل دخولك لتُحفظ أنشطتك على كل أجهزتك، وتصلك علامات طلابك من كل الأجهزة.</span><button class="btn pri sm" data-a="login">دخول المعلم</button></section>` : ''}
     <div class="row"><h1 class="grow">أنشطتي</h1>
-      <label style="position:relative;width:min(320px,100%)"><span class="sr" hidden>بحث</span><span style="position:absolute;top:12px;right:12px;color:var(--muted)">${ic('search')}</span>
-      <input class="in" id="myQ" type="search" placeholder="بحث في أنشطتي ووحداتي" value="${esc(S.q)}" style="padding-right:40px"></label></div>
+      <label style="position:relative;width:min(320px,100%)"><span class="sr" hidden>بحث</span><span style="position:absolute;top:12px;inset-inline-start:12px;color:var(--muted)">${ic('search')}</span>
+      <input class="in" id="myQ" type="search" placeholder="بحث في أنشطتي ووحداتي" value="${esc(S.q)}" style="padding-inline-start:40px"></label></div>
     <div class="pills">${pill('all', 'الكل', acts.length + units.length)}${pill('act', 'أنشطة', acts.length)}${pill('unit', 'وحدات', units.length)}</div>
     ${rows.length ? `<section class="panel flush list">${rows.map(r => r.t === 'unit' ? unitRow(r.o) : actRow(r.o)).join('')}</section>` :
       `<section class="panel empty"><h2>${acts.length + units.length ? 'لا نتائج' : 'لا توجد أنشطة بعد'}</h2><span>${acts.length + units.length ? 'جرّب كلمة أخرى.' : 'أنشئ أول نشاط في دقيقتين، أو خذ واحداً جاهزاً من المكتبة.'}</span>
@@ -312,6 +313,7 @@ function settingsHTML(st, t, prefix) {
     <details class="more"><summary>خيارات أكثر</summary><div style="display:flex;flex-direction:column;gap:12px;margin-top:10px">
       <label class="check"><input type="checkbox" data-a="setc" data-p="${p}" data-k="showAnswers" ${st.showAnswers ? 'checked' : ''}> إظهار الأجوبة الصحيحة في النهاية</label>
       <label class="check"><input type="checkbox" data-a="setc" data-p="${p}" data-k="listen" ${st.listen ? 'checked' : ''}> استماع فقط: يسمع الطالب السؤال ولا يراه مكتوباً</label>
+      <label class="check"><input type="checkbox" data-a="setc" data-p="${p}" data-k="allowSwitch" ${st.allowSwitch !== false ? 'checked' : ''}> السماح للطلاب بتغيير القالب للتدرّب</label>
       <label class="check"><input type="checkbox" data-a="setc" data-p="${p}" data-k="swap" ${st.swap ? 'checked' : ''}> اعكس الاتجاه (المعنى ← الكلمة)</label>
       <div class="row"><label class="field"><span>عدد المحاولات</span><select class="in" data-a="sets" data-p="${p}" data-k="attempts" style="width:160px">${[[0, 'بلا حد'], [1, 'مرة واحدة'], [2, 'مرتان'], [3, '3 مرات']].map(([v, l]) => `<option value="${v}" ${+st.attempts === v ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
       <label class="field"><span>الوقت (دقائق)</span><input class="in" type="number" min="0" max="120" data-a="sets" data-p="${p}" data-k="timeLimit" value="${st.timeLimit || ''}" placeholder="بدون" style="width:120px"></label>
@@ -332,7 +334,9 @@ function viewUse() {
   if (S.way === 'print') body = `<section class="panel" style="display:flex;flex-direction:column;gap:12px"><span class="muted">تُفتح أداة الطباعة ومعها كلماتك وصورك. تختار شكل البطاقات أو ورقة العمل، ثم تنزّل Word أو PDF.</span>
       <button class="btn pri lg" data-a="toPrint" style="align-self:flex-start">${ic('print', 18)}افتح أداة الطباعة</button></section>`;
   return `<div class="page narrow"><div class="row"><div class="grow" style="min-width:240px"><h1>${esc(a.title || 'بدون عنوان')}</h1><span class="muted">${t.name} · ${K.usable(a.items).length} ${t.needs === 'questions' ? 'سؤال' : 'عنصر'}</span></div>
-      <button class="btn" data-a="changeTpl">${ic('swap', 16)}غيّر القالب</button><button class="btn" data-a="toUnitPick">أضف إلى وحدة</button></div>
+      <button class="btn" data-a="toUnitPick">أضف إلى وحدة</button></div>
+    <section class="panel" style="display:flex;flex-direction:column;gap:10px;padding:14px"><div class="row"><b class="grow">اختر قالباً آخر للمحتوى نفسه</b><button class="btn sm ghost" data-a="changeTpl" style="color:var(--brand)">كل القوالب</button></div>
+      <div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px">${TEMPLATES.filter(x => K.fits(x.id, a.items) > 0).map(x => `<button class="card ${x.id === a.template ? 'on' : ''}" data-a="switchTpl" data-v="${x.id}" style="flex:0 0 120px;padding:0"><span class="art shot" style="height:70px;background-image:url(${x.id}.jpg)"></span><span class="small" style="padding:6px 8px;font-weight:600">${x.name}</span></button>`).join('')}</div></section>
     <div role="tablist" style="display:grid;grid-template-columns:repeat(${ways.length},minmax(0,1fr));gap:12px">${ways.map(([k, n, d, i]) => `<button class="card ${S.way === k ? 'on' : ''}" data-a="way" data-v="${k}" style="padding:16px;gap:6px;color:var(--ink)"><span style="color:${S.way === k ? 'var(--brand)' : 'var(--muted)'}">${ic(i, 24)}</span><b style="font-size:17px;font-weight:600">${n}</b><span class="small muted">${d}</span></button>`).join('')}</div>
     ${body}</div>`;
 }
@@ -433,7 +437,7 @@ function viewLibrary() {
   const list = S.libTab === 'act' ? acts : units;
   return `<div class="page"><h1>المكتبة</h1>
     <div class="tabs" role="tablist"><button class="${S.libTab === 'act' ? 'on' : ''}" data-a="libTab" data-v="act">أنشطة <span class="small muted">${acts.length}</span></button><button class="${S.libTab === 'unit' ? 'on' : ''}" data-a="libTab" data-v="unit">وحدات <span class="small muted">${units.length}</span></button></div>
-    <label style="position:relative"><span style="position:absolute;top:12px;right:12px;color:var(--muted)">${ic('search')}</span><input class="in" id="libQ" type="search" placeholder="ابحث عن موضوع أو كلمة، مثل: حيوانات، الكسور، Unit 3" value="${esc(S.libQ)}" style="padding-right:40px"></label>
+    <label style="position:relative"><span style="position:absolute;top:12px;inset-inline-start:12px;color:var(--muted)">${ic('search')}</span><input class="in" id="libQ" type="search" placeholder="ابحث عن موضوع أو كلمة، مثل: حيوانات، الكسور، Unit 3" value="${esc(S.libQ)}" style="padding-inline-start:40px"></label>
     ${list.length ? `<div class="grid" style="${S.libTab === 'unit' ? 'grid-template-columns:repeat(auto-fill,minmax(320px,1fr))' : ''}">${list.map(S.libTab === 'act' ? card : ucard).join('')}</div>` : '<div class="panel empty">لا نتائج. جرّب كلمة أخرى.</div>'}
     <p class="small muted" style="margin:0">"استعمل" ينشئ نسخة لك فوراً وينقلك لمشاركتها. "عدّل نسخة" يفتح نسختك للتعديل. الأصل يبقى كما هو دائماً.</p></div>`;
 }
@@ -561,7 +565,7 @@ document.addEventListener('click', async e => {
       else S.draft.template = S.pick;
       saveDraft(); go('edit'); setTimeout(() => $('#aTitle') && $('#aTitle').focus(), 30); break;
     case 'changeTpl': S.tplFor = 'activity'; S.pick = S.draft.template; go('tpl'); break;
-    case 'switchTpl': S.draft.template = v; saveDraft(); render(); toast('نفس المحتوى، بقالب ' + tpl(v).name); break;
+    case 'switchTpl': S.draft.template = v; saveDraft(); S.lastLink = null; if (S.view === 'use') S.way = tpl(v).print ? 'print' : (S.way === 'print' ? 'link' : S.way); render(); toast('نفس المحتوى، بقالب ' + tpl(v).name); break;
     case 'iadd': { const items = ownerItems(o); items.push(K.newItem()); touch(o); render(); const ins = document.querySelectorAll(`[data-a=itxt][data-o=${o}][data-f=q]`); ins[ins.length - 1].focus(); break; }
     case 'idel': { const items = ownerItems(o), i = items.findIndex(x => x.id === id); if (i >= 0) items.splice(i, 1); touch(o); render(); break; }
     case 'pic': openPic(o, id, el.dataset.f); break;

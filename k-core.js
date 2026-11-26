@@ -48,7 +48,7 @@
     { id: 'sentences', name: 'جمل', list: ['flash', 'order', 'match', 'quiz'] },
     { id: 'review', name: 'مراجعة قبل الامتحان', list: ['bus', 'mcq', 'quiz'] }
   ];
-  const DEFAULT_SETTINGS = { mode: 'practice', showScore: true, leaderboard: true, lbCount: 10, showAnswers: true, shuffle: true, readAloud: true, attempts: 0, timeLimit: 0, due: '', swap: false };
+  const DEFAULT_SETTINGS = { allowSwitch: true, mode: 'practice', showScore: true, leaderboard: true, lbCount: 10, showAnswers: true, shuffle: true, readAloud: true, attempts: 0, timeLimit: 0, due: '', swap: false };
   const settingsFor = (t, s) => { const o = Object.assign({}, DEFAULT_SETTINGS, s || {}); if (tpl(t).test) { o.mode = 'test'; } if (o.mode === 'test') o.leaderboard = false; return o; };
 
   // ---------- items ----------

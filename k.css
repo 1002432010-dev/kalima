@@ -121,3 +121,8 @@ button.card.on{border:2px solid var(--brand);box-shadow:0 6px 18px rgba(76,61,21
 /* wrong-answer marker: click it to make this answer the right one */
 .mkr{width:26px;height:26px;border-radius:50%;border:2px solid #C9CDD8;background:#fff;color:#C9CDD8;display:grid;place-items:center;flex:none;padding:0;transition:border-color .15s,color .15s,background-color .15s}
 .mkr:hover,.mkr:focus-visible{border-color:var(--ok);color:#fff;background:var(--ok)}
+
+/* interface language picker: always at the physical left of the top bar */
+.langpick{display:inline-flex;align-items:center;gap:4px;order:99;font-size:14px;color:var(--muted)}
+[dir=ltr] .langpick{order:-1}
+.langpick select{border:1px solid var(--line);border-radius:8px;background:var(--surface);padding:5px 6px;font:inherit;color:var(--ink)}

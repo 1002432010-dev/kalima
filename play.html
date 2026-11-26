@@ -68,6 +68,12 @@
 .jib{position:absolute;right:20px;top:18px;width:46px;height:10px;background:#E0522B;border-radius:4px}
 .cable{position:absolute;width:3px;background:#3A3F48;transform-origin:top center;z-index:3}
 .wball{position:absolute;width:52px;height:52px;margin:-26px 0 0 -26px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#9AA0AA,#3A3F48 70%);box-shadow:0 4px 8px rgba(0,0,0,.35);z-index:4}
+.swp{display:flex;flex-direction:column;gap:8px}
+.swp.wide{position:fixed;left:20px;top:84px;width:200px;max-height:calc(100vh - 100px);overflow:auto;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px;z-index:5}
+.swl{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:6px}.swp.wide .swl{grid-template-columns:1fr}
+.swb{display:flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:5px;font-weight:600;font-size:13px;text-align:start;color:var(--ink)}
+.swb.on{border-color:var(--brand);background:var(--brand-soft)}.swb:hover{border-color:#C9CDD8}
+.swi{width:46px;height:31px;border-radius:6px;flex:none;background-color:var(--ground);background-size:400% 100%;background-position:0 0}
 .feedback{min-height:26px;text-align:center;font-weight:600}
 .match{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px}.match .col{display:flex;flex-direction:column;gap:10px}
 .mi{min-height:64px;border:2px solid var(--line);background:var(--surface);border-radius:12px;padding:8px 10px;font-size:17px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:8px;overflow-wrap:anywhere}
@@ -94,6 +100,7 @@
 <header class="bar" id="bar"></header>
 <main id="main"></main>
 <script src="k-core.js"></script>
+<script src="k-i18n.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script src="k-cloud.js"></script>
 <script src="sounds.js"></script>
@@ -125,7 +132,7 @@ const P = { data: null, name: '', view: 'load', run: null, door: 'all' };
   render();
 })();
 const logo = () => `<span class="logo"><i>K</i>Kalima</span>`;
-function bar(extra = '') { $('#bar').innerHTML = `${logo()}<span class="grow"></span>${extra}${P.name && !P.data.preview ? `<span class="muted">مرحباً، <b style="color:var(--ink);font-weight:600" dir="auto">${esc(P.name)}</b></span>` : P.data && P.data.preview ? '<span class="chip" style="background:var(--brand-soft);color:var(--brand)">معاينة · لا تُحفظ النتائج</span>' : ''}`; }
+function bar(extra = '') { $('#bar').innerHTML = `${logo()}<span class="grow"></span>${window.KI ? KI.picker() : ''}${extra}${P.name && !P.data.preview ? `<span class="muted">مرحباً، <b style="color:var(--ink);font-weight:600" dir="auto">${esc(P.name)}</b></span>` : P.data && P.data.preview ? '<span class="chip" style="background:var(--brand-soft);color:var(--brand)">معاينة · لا تُحفظ النتائج</span>' : ''}`; }
 
 // ================= screens =================
 const attemptsUsed = act => DB.results(P.data.code).filter(r => r.act === act.id && K.norm(r.name) === K.norm(P.name)).length;
@@ -187,7 +194,20 @@ function start(act) {
   P.run = R; P.view = 'run'; draw(); autoSay();
 }
 function autoSay() { const R = P.run; if (!R || !R.st.readAloud || R.done) return; const q = R.qs && R.qs[R.i]; if (q && q.it && (R.t.id === 'mcq' || R.t.id === 'quiz' || R.t.id === 'tf' || R.t.id === 'snake' || R.t.id === 'pop')) setTimeout(() => sayIt(q.it), 200); }
-function head(R) {
+function head(R) { return headCore(R) + swPanel(R); }
+function swList(R) {
+  const base = R.act.alt ? R.act.base : R.act, st = base.settings || {};
+  if (P.data.kind !== 'activity' || P.data.present || st.mode === 'test' || tpl(base.template).test || st.allowSwitch === false) return [];
+  return K.TEMPLATES.filter(t => !t.print && !t.game && !t.test && K.fits(t.id, P.data.items) > 0);
+}
+function swPanel(R) {
+  const list = swList(R); if (list.length < 2) return '';
+  const cur = R.act.template, wide = innerWidth >= 1180, open = wide || P.swOpen;
+  return `<aside class="swp ${wide ? 'wide' : ''}">${wide ? '<b class="small muted">قوالب أخرى</b>' : `<button class="btn sm" data-a="swToggle" style="align-self:flex-start">${ic('<path d="m17 2 4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="m7 22-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/>', 16)}قوالب أخرى</button>`}
+    ${open ? `<div class="swl">${list.map(t => `<button class="swb ${t.id === cur ? 'on' : ''}" data-a="swTpl" data-v="${t.id}"><span class="swi" style="background-image:url(${t.id}.jpg)"></span><span>${t.name}</span></button>`).join('')}</div>` : ''}
+    ${R.act.alt ? `<span class="small muted">تتدرّب بقالب آخر. العلامة لا تُرسل للمعلم.</span><button class="btn sm" data-a="swTpl" data-v="${R.act.base.template}">العودة للقالب الأصلي</button>` : ''}</aside>`;
+}
+function headCore(R) {
   if (R.t.id === 'cross') return `<div class="row" style="flex-wrap:nowrap"><button class="btn sm ghost" data-a="quit">${P.data.kind === 'unit' ? 'رجوع للوحدة' : 'خروج'}</button><div class="progress grow"><i style="width:${R.solved / R.cwTotal * 100}%"></i></div><span class="small muted" style="font-variant-numeric:tabular-nums">${R.solved} / ${R.cwTotal}</span></div>`;
   const n = R.qs ? R.qs.length : R.total, at = R.qs ? R.i : R.gone.length + R.rounds.slice(0, R.r).reduce((s, r) => s + r.length, 0);
   return `<div class="row" style="flex-wrap:nowrap"><button class="btn sm ghost" data-a="quit">${P.data.kind === 'unit' ? 'رجوع للوحدة' : 'خروج'}</button><div class="progress grow"><i style="width:${at / n * 100}%"></i></div><span class="small muted" style="font-variant-numeric:tabular-nums">${Math.min(at + 1, n)} / ${n}</span></div>`;
@@ -590,13 +610,13 @@ function finish(act, r) {
   const st = act.settings || K.settingsFor(act.template), test = st.mode === 'test';
   const score = r.total ? Math.round(r.correct / r.total * 100) : 0;
   const rec = { name: P.name, act: act.id, score, correct: r.correct, total: r.total, ms: r.ms, at: Date.now(), wrong: r.wrong || [] };
-  if (!P.data.preview) { DB.addResult(P.data.code, rec); if (window.KC) KC.addResult(P.data.code, rec); }
+  if (!P.data.preview && !act.alt) { DB.addResult(P.data.code, rec); if (window.KC) KC.addResult(P.data.code, rec); }
   P.view = 'end'; P.run = null; P.last = { act, rec, st, all: false }; drawEnd();
 }
 function drawEnd() {
   // the leaderboard from every device: fetch once, then draw again
   if (window.KC && KC.ok && P.last && !P.last.synced && !P.data.preview) { P.last.synced = true; setTimeout(() => KC.results(P.data.code).then(r => { if (r && P.view === 'end') drawEnd(); }), 700); }
-  const { act, rec, st, all } = P.last, test = st.mode === 'test', lbOn = st.leaderboard && !test && !P.data.preview;
+  const { act, rec, st, all } = P.last, test = st.mode === 'test', lbOn = st.leaderboard && !test && !P.data.preview && !act.alt;
   bar();
   const board = lbOn ? K.board(P.data.code, act.id) : [], me = board.findIndex(b => K.norm(b.name) === K.norm(P.name));
   const shown = all ? board : board.slice(0, st.lbCount || 10);
@@ -632,6 +652,9 @@ document.addEventListener('click', e => {
     case 'cwBack': cwBack(); break;
     case 'cwHint': cwHint(); break;
     case 'wbrk': wallHit(+el.dataset.k, el); break;
+    case 'swToggle': P.swOpen = !P.swOpen; draw(); break;
+    case 'swTpl': { const base = R.act.alt ? R.act.base : R.act; const v = el.dataset.v; if (v === R.act.template) break;
+      start(v === base.template ? base : { id: base.id + '~' + v, template: v, settings: K.settingsFor(v, Object.assign({}, base.settings, { mode: 'practice', attempts: 0 })), alt: true, base }); break; }
     case 'sdir': snakeTurn(el.dataset.v); break;
     case 'startAct': start(P.data.acts.find(x => x.id === el.dataset.id)); break;
     case 'door': P.door = el.dataset.v; render(); break;
