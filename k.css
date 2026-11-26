@@ -126,3 +126,4 @@ button.card.on{border:2px solid var(--brand);box-shadow:0 6px 18px rgba(76,61,21
 .langpick{display:inline-flex;align-items:center;gap:4px;order:99;font-size:14px;color:var(--muted)}
 [dir=ltr] .langpick{order:-1}
 .langpick select{border:1px solid var(--line);border-radius:8px;background:var(--surface);padding:5px 6px;font:inherit;color:var(--ink)}
+[dir=ltr] svg.nx{transform:scaleX(-1)}
