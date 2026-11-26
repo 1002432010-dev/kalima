@@ -202,29 +202,65 @@ function pasteBox(owner, big) {
     <textarea class="in" id="pasteInl" data-o="${owner}" dir="auto" style="min-height:${big ? 220 : 160}px;font-size:16px" placeholder="${PASTE_EX}"></textarea>
     <div class="row"><span id="pasteHint" class="small muted grow">الصق أو اكتب، وKalima يفهم النوع تلقائياً.</span><button class="btn pri lg" data-a="pasteInl" data-o="${owner}">أضف المحتوى</button></div></section>`;
 }
-const AI = { kind: 'questions', topic: '', grade: '4', n: 10, lang: 'English', mean: 'Arabic' };
+// ================= AI helper: the teacher fills clear fields, copies a ready request, pastes the answer back =================
+const AI = { src: 'topic', kind: 'words', topic: '', text: '', grade: '4', n: 10, lang: 'English', mean: 'Arabic', level: 'easy', notes: '' };
+const AI_LANG = { English: 'الإنجليزية', Arabic: 'العربية', Hebrew: 'العبرية' };
+const AI_KIND = { words: 'كلمات ومعانيها', questions: 'أسئلة اختيار من 4', sentences: 'جمل وترجمتها' };
+const AI_SRC = { topic: 'موضوع أكتبه', image: 'صورة أو صفحة من الكتاب', text: 'نص ألصقه' };
+const AI_LEVEL = { easy: 'سهل', medium: 'متوسط', hard: 'صعب' };
 function aiPrompt() {
-  const g = AI.grade ? `grade ${AI.grade} students` : 'students', t = AI.topic.trim() || '[TOPIC]';
-  const head = `You are helping a teacher make a classroom activity for ${g}. Topic: ${t}.\n`;
-  const tail = `\nReturn ONLY the list, no title, no explanations, no extra lines.`;
-  if (AI.kind === 'questions') return head + `Write ${AI.n} multiple-choice questions in ${AI.lang}, at the right level for these students. Each question has exactly 4 answers, one correct.\nUse exactly this format, and put * before the correct answer:\n1. Question text?\na) answer\nb) *correct answer\nc) answer\nd) answer` + tail;
-  if (AI.kind === 'words') return head + `Write ${AI.n} key words in ${AI.lang}, each with its meaning in ${AI.mean}.\nUse exactly this format, one per line:\nword - meaning` + tail;
-  return head + `Write ${AI.n} short, simple sentences in ${AI.lang} (4 to 9 words each), one sentence per line, each with its ${AI.mean} translation.\nUse exactly this format, one per line:\nsentence - translation` + tail;
+  const who = AI.grade ? `grade ${AI.grade} students` : 'school students', lvl = { easy: 'easy', medium: 'medium', hard: 'challenging' }[AI.level];
+  let src = '';
+  if (AI.src === 'topic') src = `Topic: ${AI.topic.trim() || '[write the topic here]'}.`;
+  if (AI.src === 'image') src = 'I attached an image (a textbook page or worksheet). Use ONLY the content that appears in the image. If the image already shows words with their meanings, copy them exactly as they appear.';
+  if (AI.src === 'text') src = `Use ONLY this text:\n<<<\n${AI.text.trim() || '[paste the text here]'}\n>>>`;
+  const fmt = {
+    words: `Make a list of ${AI.n} words in ${AI.lang}, each with its meaning in ${AI.mean}.\nFormat, exactly one per line:\nword - meaning`,
+    questions: `Write ${AI.n} multiple-choice questions in ${AI.lang}. Each question has exactly 4 answers and only one is correct. Put * right before the correct answer.\nFormat, exactly:\n1. Question?\na) answer\nb) *correct answer\nc) answer\nd) answer`,
+    sentences: `Write ${AI.n} short sentences in ${AI.lang} (4 to 9 words each), each with its translation in ${AI.mean}.\nFormat, exactly one per line:\nsentence - translation`
+  }[AI.kind];
+  return `You are helping a teacher prepare a classroom activity for ${who}. Level: ${lvl}.\n${src}\n${fmt}${AI.notes.trim() ? `\nExtra instructions from the teacher: ${AI.notes.trim()}` : ''}\nReturn ONLY the list in this format: no title, no explanations, no empty lines.`;
+}
+// what the request asks for, in the teacher's words
+function aiSummary() {
+  const from = AI.src === 'topic' ? `عن «${esc(AI.topic.trim() || '…')}»` : AI.src === 'image' ? 'من الصورة التي سترفقها' : 'من النص الذي ألصقته';
+  const what = { words: `${AI.n} كلمة باللغة ${AI_LANG[AI.lang]} مع معناها باللغة ${AI_LANG[AI.mean]}`, questions: `${AI.n} سؤال اختيار من 4 باللغة ${AI_LANG[AI.lang]}، والجواب الصحيح مُعلَّم بـ *`, sentences: `${AI.n} جملة قصيرة باللغة ${AI_LANG[AI.lang]} مع ترجمتها باللغة ${AI_LANG[AI.mean]}` }[AI.kind];
+  return `سيطلب: ${what}، ${from}، لطلاب ${AI.grade ? 'الصف ' + AI.grade : 'المدرسة'}، بمستوى ${AI_LEVEL[AI.level]}.`;
 }
 function aiModal(o) {
-  const seg = (k, opts) => `<div class="seg" style="flex-wrap:wrap">${opts.map(([v, l]) => `<button class="${String(AI[k]) === String(v) ? 'on' : ''}" data-a="aiSet" data-k="${k}" data-v="${v}" data-o="${o}">${l}</button>`).join('')}</div>`;
-  $('#modal').innerHTML = `<div class="overlay" data-a="mclose"><div class="sheet" style="width:min(680px,100%)"><div class="row"><h2 class="grow">✨ اطلب من الذكاء الاصطناعي</h2><button class="ico" data-a="mclose" aria-label="إغلاق">${ic('x', 16)}</button></div>
-    <p class="small muted" style="margin:0">اختر ما تريد، انسخ الطلب، والصقه في Claude أو ChatGPT. انسخ الجواب ثم الصقه في صندوق اللصق في Kalima. راجع المحتوى دائماً قبل إعطائه للطلاب.</p>
-    <div class="field"><span>ماذا تريد؟</span>${seg('kind', [['questions', 'أسئلة بأربعة أجوبة'], ['words', 'كلمات ومعانيها'], ['sentences', 'جمل وترجمتها']])}</div>
-    <label class="field"><span>الموضوع أو الدرس</span><input class="in" id="aiTopic" dir="auto" value="${esc(AI.topic)}" placeholder="مثال: animals and their homes · الكسور · present simple"></label>
-    <div class="row" style="gap:14px;align-items:flex-end">
-      <label class="field"><span>الصف</span><select class="in" id="aiGrade" style="width:110px">${['', 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(x => `<option value="${x}" ${String(AI.grade) === String(x) ? 'selected' : ''}>${x || '—'}</option>`).join('')}</select></label>
-      <label class="field"><span>العدد</span><select class="in" id="aiN" style="width:90px">${[5, 8, 10, 12, 15, 20].map(x => `<option ${+AI.n === x ? 'selected' : ''}>${x}</option>`).join('')}</select></label>
-      <label class="field"><span>لغة المحتوى</span><select class="in" id="aiLang" style="width:130px">${[['English', 'إنجليزي'], ['Arabic', 'عربي'], ['Hebrew', 'عبري']].map(([v, l]) => `<option value="${v}" ${AI.lang === v ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
-      ${AI.kind === 'questions' ? '' : `<label class="field"><span>لغة المعنى</span><select class="in" id="aiMean" style="width:130px">${[['Arabic', 'عربي'], ['Hebrew', 'عبري'], ['English', 'إنجليزي']].map(([v, l]) => `<option value="${v}" ${AI.mean === v ? 'selected' : ''}>${l}</option>`).join('')}</select></label>`}</div>
-    <textarea class="in" id="aiOut" dir="ltr" readonly style="min-height:150px;font-size:13px;text-align:left">${esc(aiPrompt())}</textarea>
-    <div class="row"><button class="btn pri" data-a="aiCopy">${ic('copy', 16)}انسخ الطلب</button><a class="btn" href="https://claude.ai/new" target="_blank" rel="noopener">افتح Claude</a><a class="btn" href="https://chatgpt.com/" target="_blank" rel="noopener">افتح ChatGPT</a>
-      <span class="grow"></span><button class="btn" data-a="aiPaste" data-o="${o}">الصق الجواب هنا</button></div></div></div>`;
+  const seg = (k, map) => `<div class="seg" style="flex-wrap:wrap">${Object.entries(map).map(([v, l]) => `<button type="button" class="${String(AI[k]) === String(v) ? 'on' : ''}" data-a="aiSet" data-k="${k}" data-v="${v}" data-o="${o}">${l}</button>`).join('')}</div>`;
+  const sel = (id, k, opts, w) => `<select class="in" id="${id}" style="width:${w}px">${opts.map(([v, l]) => `<option value="${v}" ${String(AI[k]) === String(v) ? 'selected' : ''}>${l}</option>`).join('')}</select>`;
+  const langs = Object.entries(AI_LANG), twoLang = AI.kind !== 'questions';
+  const step = (n, t) => `<li style="display:flex;gap:10px;align-items:flex-start"><b style="flex:none;width:24px;height:24px;border-radius:50%;background:var(--brand);color:#fff;display:grid;place-items:center;font-size:13px">${n}</b><span>${t}</span></li>`;
+  $('#modal').innerHTML = `<div class="overlay" data-a="mclose"><div class="sheet" style="width:min(720px,100%)">
+    <div class="row"><h2 class="grow">✨ اطلب من الذكاء الاصطناعي</h2><button class="ico" data-a="mclose" aria-label="إغلاق">${ic('x', 16)}</button></div>
+    <section style="display:flex;flex-direction:column;gap:14px">
+      <div class="field"><span>1. من أين المحتوى؟</span>${seg('src', AI_SRC)}</div>
+      ${AI.src === 'topic' ? `<label class="field"><span>الموضوع أو الدرس</span><input class="in" id="aiTopic" dir="auto" value="${esc(AI.topic)}" placeholder="مثال: الحيوانات وبيوتها · Unit 3: My family · الكسور"></label>` : ''}
+      ${AI.src === 'image' ? '<div class="panel small" style="background:var(--brand-soft);border-color:var(--brand-line)">صوّر صفحة الكتاب أو ورقة العمل. سترفق الصورة بنفسك في نافذة الذكاء الاصطناعي (زر 📎 أو +) قبل أن تلصق الطلب.</div>' : ''}
+      ${AI.src === 'text' ? `<label class="field"><span>الصق النص هنا (قصة، فقرة من الكتاب…)</span><textarea class="in" id="aiText" dir="auto" style="min-height:110px">${esc(AI.text)}</textarea></label>` : ''}
+      <div class="field"><span>2. ماذا تريد أن يصنع؟</span>${seg('kind', AI_KIND)}</div>
+      <div class="row" style="gap:14px;align-items:flex-end">
+        <label class="field"><span>${twoLang ? 'لغة الكلمات' : 'اللغة'}</span>${sel('aiLang', 'lang', langs, 130)}</label>
+        ${twoLang ? `<label class="field"><span>لغة المعنى</span>${sel('aiMean', 'mean', langs, 130)}</label>` : ''}
+        <label class="field"><span>الصف</span>${sel('aiGrade', 'grade', ['', 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(x => [x, x || '—']), 90)}</label>
+        <label class="field"><span>العدد</span>${sel('aiN', 'n', [5, 8, 10, 12, 15, 20].map(x => [x, x]), 80)}</label>
+        <label class="field"><span>المستوى</span>${sel('aiLevel', 'level', Object.entries(AI_LEVEL), 100)}</label></div>
+      <label class="field"><span>ملاحظات إضافية (اختياري)</span><input class="in" id="aiNotes" dir="auto" value="${esc(AI.notes)}" placeholder="مثال: كلمات من 3 أو 4 حروف فقط · بدون أفعال · أسئلة عن الفهم"></label>
+    </section>
+    <div class="panel" style="padding:12px 14px;background:var(--ok-soft);border-color:#9FD9BF;font-weight:600" id="aiSum">${aiSummary()}</div>
+    <section class="panel" style="display:flex;flex-direction:column;gap:10px"><h3 style="margin:0;font-size:16px">كيف تستعمله</h3>
+      <ol style="margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:8px">
+        ${step(1, 'اضغط <b>انسخ الطلب</b>.')}
+        ${step(2, 'اضغط <b>افتح Claude</b> أو <b>افتح ChatGPT</b>، فتُفتح في نافذة جديدة.')}
+        ${step(3, AI.src === 'image' ? 'أرفق صورة الصفحة بزر 📎 أو +، ثم الصق الطلب (Ctrl+V) وأرسله.' : 'الصق الطلب في خانة الكتابة (Ctrl+V) وأرسله.')}
+        ${step(4, 'انسخ الجواب كله من هناك.')}
+        ${step(5, 'ارجع إلى هنا واضغط <b>الصق الجواب هنا</b>. راجع المحتوى قبل إعطائه للطلاب.')}
+      </ol></section>
+    <div class="row"><button class="btn pri lg" data-a="aiCopy">${ic('copy', 16)}انسخ الطلب</button><a class="btn" href="https://claude.ai/new" target="_blank" rel="noopener">افتح Claude</a><a class="btn" href="https://chatgpt.com/" target="_blank" rel="noopener">افتح ChatGPT</a>
+      <span class="grow"></span><button class="btn" data-a="aiPaste" data-o="${o}">الصق الجواب هنا</button></div>
+    <details class="more"><summary>اعرض نص الطلب (مكتوب بالإنجليزية لأن الذكاء الاصطناعي يلتزم بالتنسيق أكثر هكذا)</summary><textarea class="in" id="aiOut" dir="ltr" readonly style="min-height:140px;font-size:13px;text-align:left;margin-top:8px">${esc(aiPrompt())}</textarea></details>
+  </div></div>`;
 }
 function describePaste(txt) {
   if (!txt.trim()) return 'الصق أو اكتب، وKalima يفهم النوع تلقائياً.';
@@ -540,7 +576,7 @@ document.addEventListener('click', async e => {
     case 'acct': acctModal(); break;
     case 'logout': await KC.signOut(); $('#modal').innerHTML = ''; render(); toast('خرجت من حسابك'); break;
     case 'aiSet': AI[el.dataset.k] = v; aiModal(o); break;
-    case 'aiCopy': { const t = $('#aiOut'); try { await navigator.clipboard.writeText(t.value); toast('تم نسخ الطلب. الصقه في Claude أو ChatGPT'); } catch (er) { t.select(); toast('اضغط Ctrl+C للنسخ'); } break; }
+    case 'aiCopy': { const t = $('#aiOut'); try { await navigator.clipboard.writeText(aiPrompt()); toast('تم نسخ الطلب. الصقه في Claude أو ChatGPT'); } catch (er) { t.select(); toast('اضغط Ctrl+C للنسخ'); } break; }
     case 'aiPaste': openPaste(o); break;
     case 'mkRight': { const it = ownerItems(o).find(x => x.id === id), j = +el.dataset.k; if (!it) return; const { S } = slotsOf(it);
       if (!(S[j] || '').trim()) { toast('اكتب الجواب أولاً'); return; }
@@ -598,7 +634,7 @@ document.addEventListener('input', e => {
   if (el.id === 'libQ') { S.libQ = el.value; const pos = el.selectionStart; render(); const n = $('#libQ'); n.focus(); n.setSelectionRange(pos, pos); return; }
   if (el.id === 'aTitle') { S.draft.title = el.value; saveDraft(); return; }
   if (el.id === 'uTitle') { S.unit.title = el.value; saveUnit(); return; }
-  if (['aiTopic', 'aiGrade', 'aiN', 'aiLang', 'aiMean'].includes(el.id)) { AI[{ aiTopic: 'topic', aiGrade: 'grade', aiN: 'n', aiLang: 'lang', aiMean: 'mean' }[el.id]] = el.value; const t = $('#aiOut'); if (t) t.value = aiPrompt(); return; }
+  if (['aiTopic', 'aiText', 'aiNotes', 'aiGrade', 'aiN', 'aiLang', 'aiMean', 'aiLevel'].includes(el.id)) { AI[{ aiTopic: 'topic', aiText: 'text', aiNotes: 'notes', aiGrade: 'grade', aiN: 'n', aiLang: 'lang', aiMean: 'mean', aiLevel: 'level' }[el.id]] = el.value; const t = $('#aiOut'); if (t) t.value = aiPrompt(); const m = $('#aiSum'); if (m) m.innerHTML = aiSummary(); return; }
   if (el.id === 'pasteInl') { const h = $('#pasteHint'); if (h) h.textContent = describePaste(el.value); return; }
   if (a === 'itxt') { const it = ownerItems(el.dataset.o).find(x => x.id === el.dataset.id); if (it) { it[el.dataset.f] = el.value; touch(el.dataset.o); } return; }
   if (a === 'iw') { const it = ownerItems(el.dataset.o).find(x => x.id === el.dataset.id); if (it) { it.w[+el.dataset.k] = el.value; touch(el.dataset.o); } return; }
